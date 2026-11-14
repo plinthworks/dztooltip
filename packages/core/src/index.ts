@@ -4,9 +4,9 @@
  * or the app's own (`animate`, a GSAP timeline welcome), rich content, and `safeHtml`, the cleaner that lets a tooltip or
  * a popover show HTML. No runtime dependency.
  */
-export { tooltip, cutText, type TooltipHandle, type TooltipOptions } from './tooltip.js';
+export { tooltip, type TooltipHandle, type TooltipOptions } from './tooltip.js';
 export { popover, type PopoverCloseReason, type PopoverHandle, type PopoverOptions } from './popover.js';
 export { safeHtml } from './html.js';
-export { FLOAT_CSS, type TipContent } from './float.js';
+export type { TipContent } from './float.js';
 export type { TipAnimate, TipAnimateInfo, TipLook, TipThenable } from './bubble.js';
-export type { TipAlign, TipAnimation, TipSide, TipTone, TooltipPlacement } from './types.js';
+export type { TipAnimation, TipSide, TipTone, TooltipPlacement } from './types.js';

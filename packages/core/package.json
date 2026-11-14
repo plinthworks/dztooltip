@@ -1,6 +1,6 @@
 {
   "name": "@dztooltip/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Tooltips and popovers for any page: placement, tones, shapes, CSS animations (morph included), rich content, a HTML cleaner. No dependency.",
   "type": "module",
   "license": "MIT",

@@ -34,4 +34,4 @@ Right to left is designed in (`start` / `end` follow the reading direction; `lef
 Tooltips follow WCAG 1.4.13: shown on hover after a delay and at once on keyboard focus, hoverable, dismissed by
 Escape, described by `aria-describedby`.
 
-Status: 0.1.0 being prepared (CHANGELOG.md); not on npm yet. MIT © Plinthworks
+Status: 1.0.0 being prepared (CHANGELOG.md); not on npm yet (organisation `dztooltip`). From 1.0.0 the public API follows semver. MIT © Plinthworks

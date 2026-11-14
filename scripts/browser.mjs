@@ -6,7 +6,7 @@
  * layered and unlayered sheets × light and dark × French and Arabic × without and with Tailwind 3's preflight. One
  * browser at a time, closed in finally. `--only=chrome` runs one browser; `--first` one run per browser.
  *
- * Wired, not yet run here (0.1.0): the checks were green in DzGrid (16 272 / 16 272 at its 65faeec); after the move
+ * Wired, not yet run here (1.0.0 being prepared): the checks were green in DzGrid (16 272 / 16 272 at its 65faeec); after the move
  * their names were renamed (`dzt-*`, `--dzt-*`) and the grid's header and HTML options moved into the bridge's options.
  * The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
  */

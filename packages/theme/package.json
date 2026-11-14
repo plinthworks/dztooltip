@@ -1,6 +1,6 @@
 {
   "name": "@dztooltip/theme",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "DzTooltip's look: tones, arrows, shapes, CSS animations (morph included), the popover's surface. Plain CSS, every look a variable.",
   "license": "MIT",
   "main": "./dztooltip.css",

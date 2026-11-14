@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0
+## Unreleased — 1.0.0
 
 The tooltips and popovers written for DzGrid 1.12.0 (never published there) move to their own packages (owner,
 2026-11-14, « ok partout »). Behaviour sheet: `docs/behaviors/tooltips-popovers.md` (its lines kept, names mapped).
@@ -19,6 +19,9 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
 - Tests moved with the code (171, all green; the bridge's against DzGrid's sources beside this checkout) and a guard
   of the rules (logical sides, colours, HTML sinks). Browser checks moved (`scripts/browser.mjs`): wired, not yet run
   here; the Angular fixture's checks and a grid cell's `dzPopover` check wait for a fixture of this repository.
+- The public API kept to what an app uses (owner: from 1.0.0 a semver matter): `tooltip`, `popover`, `safeHtml` and
+  their option and handle types; `[dzTooltip]`, `[dzPopover]`; `dzTooltips` and its options. The engine's pieces sit in
+  `@dztooltip/core/internal`, for this repository's packages only (no semver promise).
 - Measured (minified, gzipped): `@dztooltip/core` whole 6 363 B (`tooltip()` alone 4 792, `popover()` alone 4 652);
   the bridge with core 3 201; `@dztooltip/angular` 2 778 over core and Angular; `dztooltip.css` 3 047
   (unlayered 3 011). No size budgets yet.
