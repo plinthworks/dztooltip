@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "types": ["vitest/globals", "node"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@dztooltip/core": ["./packages/core/src/index.ts"],
+      "@dztooltip/core/internal": ["./packages/core/src/internal.ts"],
+      "@dztooltip/angular": ["./packages/angular/src/index.ts"],
+      "@dztooltip/dzgrid": ["./packages/dzgrid/src/index.ts"]
+    }
+  },
+  "include": ["packages/core/**/*.ts", "packages/dzgrid/src/**/*.ts", "packages/theme/test/**/*.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**", "packages/core/test/browser/**"]
+}

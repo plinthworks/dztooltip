@@ -1,0 +1,15 @@
+{
+  "extends": "../core/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true,
+    "paths": {
+      "@dztooltip/core": ["../core/dist/index.d.ts"],
+      "@dztooltip/core/internal": ["../core/dist/internal.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

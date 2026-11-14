@@ -1,0 +1,15 @@
+{
+  "extends": "../core/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@dztooltip/core": ["../core/src/index.ts"],
+      "@dztooltip/core/internal": ["../core/src/internal.ts"],
+      "@dzgrid/core": ["../../../dzgrid/packages/core/src/index.ts"],
+      "@dzgrid/core/*": ["../../../dzgrid/packages/core/src/*.ts"],
+      "@dzgrid/dom": ["../../../dzgrid/packages/dom/src/index.ts"],
+      "@dzgrid/dom/*": ["../../../dzgrid/packages/dom/src/*.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/fits-dzgrid.ts"]
+}

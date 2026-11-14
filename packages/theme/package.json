@@ -1,0 +1,18 @@
+{
+  "name": "@dztooltip/theme",
+  "version": "0.1.0",
+  "description": "DzTooltip's look: tones, arrows, shapes, CSS animations (morph included), the popover's surface. Plain CSS, every look a variable.",
+  "license": "MIT",
+  "main": "./dztooltip.css",
+  "style": "./dztooltip.css",
+  "sass": "./dztooltip.scss",
+  "exports": {
+    ".": { "sass": "./dztooltip.scss", "default": "./dztooltip.css" },
+    "./dztooltip.css": "./dztooltip.css",
+    "./dztooltip.unlayered.css": "./dztooltip.unlayered.css",
+    "./dztooltip.scss": "./dztooltip.scss",
+    "./package.json": "./package.json"
+  },
+  "files": ["dztooltip.css", "dztooltip.unlayered.css", "dztooltip.scss"],
+  "sideEffects": ["*.css"]
+}
