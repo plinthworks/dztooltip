@@ -219,6 +219,8 @@ $layer: '.dzt-tooltip#{$morph}::after, .dzt-popover#{$morph}[data-side]::before'
     block-size: 100%;
     overflow: visible;
     pointer-events: none;
+    // Its shadow around the path (owner 2026-11-15): none by default, as before; the app's through the variable.
+    filter: var(--dzt-shape-shadow, none);
   }
 
   .dzt-tip-shape > path {
@@ -238,7 +240,8 @@ $layer: '.dzt-tooltip#{$morph}::after, .dzt-popover#{$morph}[data-side]::before'
   }
 
   :is(#{$bubble}):is(#{$shapes}) {
-    --dzt-tip-shadow: var(--dzt-tooltip-shape-shadow, drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--tz-fg) 25%, transparent)));
+    // `--dzt-shape-shadow` over their own: one variable for every shape (an app's too).
+    --dzt-tip-shadow: var(--dzt-shape-shadow, var(--dzt-tooltip-shape-shadow, drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--tz-fg) 25%, transparent))));
   }
 
   .dzt-popover:is(#{$shapes})::before {

@@ -22,6 +22,9 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
 - The public API kept to what an app uses (owner: from 1.0.0 a semver matter): `tooltip`, `popover`, `safeHtml` and
   their option and handle types; `[dzTooltip]`, `[dzPopover]`; `dzTooltips` and its options. The engine's pieces sit in
   `@dztooltip/core/internal`, for this repository's packages only (no semver promise).
+- `--dzt-shape-shadow` (owner 2026-11-15: an app's own `shape` had no shadow variable, the app needed a CSS rule): a
+  `filter` value drawn around every shape — an app's SVG path (none by default) and the ready-made ones, over their
+  `--dzt-tooltip-shape-shadow` (their soft shadow by default). Defaults unchanged.
 - Measured (minified, gzipped): `@dztooltip/core` whole 6 363 B (`tooltip()` alone 4 792, `popover()` alone 4 652);
   the bridge with core 3 201; `@dztooltip/angular` 2 778 over core and Angular; `dztooltip.css` 3 047
   (unlayered 3 011). No size budgets yet.

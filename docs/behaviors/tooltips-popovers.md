@@ -225,6 +225,10 @@ the keyboard; clicks a control that opens a bubble that stays (a popover); press
   MorphSVG tween can morph. Only path commands and numbers are taken (no `url()`, nothing that loads or runs); anything
   else and the box is kept. The path is drawn as given in both directions: an asymmetric shape is mirrored by the app
   (`info.dir`).
+  Its shadow (owner 2026-11-15, an app needed a CSS rule of its own): `--dzt-shape-shadow`, a `filter` value (one or
+  more `drop-shadow()`s) drawn around the path — none by default, as before. The ready-made shapes (20) read it too,
+  over their own `--dzt-tooltip-shape-shadow` (their soft shadow by default, as before): one variable gives every shape
+  the same shadow; `none` takes it away.
 - **Grid recycling**: a grid tooltip hides at the paint where its cell shows another row (tooltips.md); a popover whose
   trigger sits in a grid row closes when that row's `aria-rowindex` changes or the trigger leaves the page.
 

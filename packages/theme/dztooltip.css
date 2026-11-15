@@ -153,6 +153,7 @@
     block-size: 100%;
     overflow: visible;
     pointer-events: none;
+    filter: var(--dzt-shape-shadow, none);
   }
   .dzt-tip-shape > path {
     fill: var(--dzt-tip-arrow-bg);
@@ -167,7 +168,7 @@
     filter: drop-shadow(var(--dzt-line, 1px) 0 0 var(--dzt-tip-arrow-edge)) drop-shadow(calc(-1 * var(--dzt-line, 1px)) 0 0 var(--dzt-tip-arrow-edge)) drop-shadow(0 var(--dzt-line, 1px) 0 var(--dzt-tip-arrow-edge)) drop-shadow(0 calc(-1 * var(--dzt-line, 1px)) 0 var(--dzt-tip-arrow-edge)) var(--dzt-tip-shadow);
   }
   :is(.dzt-tooltip, .dzt-popover):is([data-shape=bubble], [data-shape=ticket], [data-shape=pill]) {
-    --dzt-tip-shadow: var(--dzt-tooltip-shape-shadow, drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--tz-fg) 25%, transparent)));
+    --dzt-tip-shadow: var(--dzt-shape-shadow, var(--dzt-tooltip-shape-shadow, drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--tz-fg) 25%, transparent))));
   }
   .dzt-popover:is([data-shape=bubble], [data-shape=ticket], [data-shape=pill])::before {
     display: none;

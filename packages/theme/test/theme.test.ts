@@ -129,6 +129,8 @@ for (const c of COPIES) {
       expect(body('.dzt-tip-shape')).toContain('z-index: -1;');
       expect(body('.dzt-tip-shape > path')).toContain('fill: var(--dzt-tip-arrow-bg);');
       expect(body('.dzt-tip-shape > path')).toContain('stroke: var(--dzt-tip-arrow-edge);');
+      // Its shadow around the path (owner 2026-11-15): `--dzt-shape-shadow`, none by default (today's look).
+      expect(body('.dzt-tip-shape')).toContain('filter: var(--dzt-shape-shadow, none);');
     });
 
     it('ready-made shapes (20): the edge and a shadow around the whole outline; pill, ticket, bubble', () => {
@@ -137,7 +139,8 @@ for (const c of COPIES) {
       expect(all).toContain('outline-color: transparent;');
       expect(all).toContain('box-shadow: none;');
       expect(all).toContain('filter: drop-shadow(var(--dzt-line, 1px) 0 0 var(--dzt-tip-arrow-edge)) drop-shadow(calc(-1 * var(--dzt-line, 1px)) 0 0 var(--dzt-tip-arrow-edge)) drop-shadow(0 var(--dzt-line, 1px) 0 var(--dzt-tip-arrow-edge)) drop-shadow(0 calc(-1 * var(--dzt-line, 1px)) 0 var(--dzt-tip-arrow-edge)) var(--dzt-tip-shadow);');
-      expect(body(`${S})`)).toContain('--dzt-tip-shadow: var(--dzt-tooltip-shape-shadow, ');
+      // `--dzt-shape-shadow` over their own (the app shapes' too); their soft shadow by default, as before.
+      expect(body(`${S})`)).toContain('--dzt-tip-shadow: var(--dzt-shape-shadow, var(--dzt-tooltip-shape-shadow, drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--tz-fg) 25%, transparent))));');
       expect(body(`${B}[data-shape=pill]`)).toContain('border-radius: 999px;');
       expect(body(`${B}[data-shape=pill]`)).toContain('padding-inline: var(--dzt-tooltip-pill-padding, 0.75rem);');
       // The ticket: four round bites out of its background, the tone's colour.
