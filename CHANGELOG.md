@@ -25,6 +25,28 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
 - `--dzt-shape-shadow` (owner 2026-11-15: an app's own `shape` had no shadow variable, the app needed a CSS rule): a
   `filter` value drawn around every shape — an app's SVG path (none by default) and the ready-made ones, over their
   `--dzt-tooltip-shape-shadow` (their soft shadow by default). Defaults unchanged.
-- Measured (minified, gzipped): `@dztooltip/core` whole 6 363 B (`tooltip()` alone 4 792, `popover()` alone 4 652);
-  the bridge with core 3 201; `@dztooltip/angular` 2 778 over core and Angular; `dztooltip.css` 3 047
-  (unlayered 3 011). No size budgets yet.
+- Robust in the hard cases (owner 2026-11-16, « ★ partout »: the six gaps of `docs/audit-floating-ui.md`, sheet 25–30;
+  Floating UI's public documentation for behaviour only) — the audit's score goes from 15 to 25 / 35:
+  - **Never bigger than the room** (25): `--dzt-available-block-size` / `--dzt-available-inline-size` written on the
+    bubble at each placement; a popover's body scrolls, a tall tooltip too (`data-overflow`); `--dzt-viewport-padding`
+    (px; 8px with the theme, 0 without) keeps bubbles from the window's edges. A `maxWidth` is held to the room too.
+  - **The side chosen** (26): the side asked, its opposite, then the two sides across; fitting nowhere, where the most
+    is seen. An explicit `placement: 'auto'` takes the side with the most room (none given: below, as before).
+  - **Following the anchor** (27): tooltips, popovers and the bridge's grid tooltips are placed again when the anchor
+    grows, moves with no scroll (an `IntersectionObserver` fitted to it), the bubble grows or the window is resized —
+    at most once a frame, only when what it was placed by changed, nothing watched while closed.
+  - **The anchor gone** (28): the tooltip hides (the page's and a grid's) when its anchor leaves the page or is no
+    longer drawn; the popover closes (`gone`), now also when its trigger is hidden. A non-element anchor no longer throws:
+    `tooltip()` / `popover()` report a `TypeError` (`dztooltip: not-an-element`) and return a handle that does nothing.
+  - **Delay groups** (29): `group` on `tooltip()` / `[dzTooltipGroup]` — by default the anchor's parent: the next
+    tooltip of a toolbar shows at once in place of the first, and for 300 ms after it hid; a grid's header buttons are
+    one group with `header: true` (its cells keep DzGrid's delay).
+  - **Modal `<dialog>`** (30): a bubble opened from inside an open dialog goes into it (no longer inert); `root`
+    (`tooltip()`, `popover()`, `[dzTooltipRoot]`, `[dzPopoverRoot]`) puts it elsewhere.
+  - Browser checks: `scripts/browser.mjs` now runs here — the audit's evidence pages as a section of their own (« the
+    hard cases », 12 runs: Chrome, Firefox, WebKit × light, dark × French, Arabic), and the whole matrix green; its page
+    selector no longer catches the grid's bubble (19 checks had failed since the move for that reason).
+- `@dztooltip/gsap` dropped (owner 2026-11-16).
+- Measured (minified, gzipped; before the hard cases → now): `@dztooltip/core` whole 6 337 → 7 820 B (`tooltip()`
+  alone 4 786 → 6 365, `popover()` alone 4 650 → 5 877); the bridge with core 3 199 → 4 527; `@dztooltip/angular`
+  2 751 → 2 858 over core and Angular; `dztooltip.css` 3 059 → 3 126 (unlayered 3 024 → 3 081). No size budgets yet.

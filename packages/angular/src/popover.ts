@@ -35,6 +35,8 @@ export class DzPopover {
   readonly dzPopoverLabel = input<string>();
   readonly dzPopoverGroup = input<string>();
   readonly dzPopoverOpenOn = input<'click' | 'manual'>();
+  /** Where the bubble goes in the page (sheet 30). @default the trigger's open `<dialog>`, or the page's end */
+  readonly dzPopoverRoot = input<HTMLElement>();
   readonly opened = output<void>();
   readonly closed = output<PopoverCloseReason>();
   readonly #open = signal(false);
@@ -57,7 +59,7 @@ export class DzPopover {
         content: what == null || typeof what === 'string' ? (what ?? '') : ɵdzDraw(what, () => untracked(this.dzPopoverContext), () => untracked(this.dzPopoverInputs), () => this.close(), ng),
         ...ɵdefined({
           placement: this.dzPopoverPlacement(), flip: this.dzPopoverFlip(), shape: this.dzPopoverShape(), reducedMotion: this.dzPopoverReducedMotion(), tone: this.dzPopoverTone(), animation: this.dzPopoverAnimation(), animate: this.dzPopoverAnimate(), style: this.dzPopoverStyle(), maxWidth: this.dzPopoverMaxWidth(),
-          label: this.dzPopoverLabel(), group: this.dzPopoverGroup(), openOn: this.dzPopoverOpenOn(),
+          label: this.dzPopoverLabel(), group: this.dzPopoverGroup(), openOn: this.dzPopoverOpenOn(), root: this.dzPopoverRoot(),
         }),
         onOpen: () => (this.#open.set(true), this.opened.emit()),
         onClose: (r: PopoverCloseReason) => (this.#open.set(false), live && this.closed.emit(r)),

@@ -147,10 +147,10 @@ describe('a column in one line, through the bridge', () => {
     over(cell(1, 'name'));
     expect(tip.style.getPropertyValue('--dzt-tooltip-info-bg')).toBe('teal');
     expect(tip.style.getPropertyValue('color')).toBe('');
-    expect(tip.style.getPropertyValue('max-inline-size')).toBe('240px');
+    expect(tip.style.getPropertyValue('max-inline-size')).toBe('min(240px, var(--dzt-available-inline-size, 100vw))');
     over(cell(1, 'n'));
     expect(tip.style.getPropertyValue('--dzt-tooltip-info-bg')).toBe('');
-    expect(tip.style.getPropertyValue('max-inline-size')).toBe('12rem');
+    expect(tip.style.getPropertyValue('max-inline-size')).toBe('min(12rem, var(--dzt-available-inline-size, 100vw))');
   });
 
   it('delayMs per column on hover; a keyboard focus on the cell opens it at once', () => {

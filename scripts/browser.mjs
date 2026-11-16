@@ -6,9 +6,8 @@
  * layered and unlayered sheets × light and dark × French and Arabic × without and with Tailwind 3's preflight. One
  * browser at a time, closed in finally. `--only=chrome` runs one browser; `--first` one run per browser.
  *
- * Wired, not yet run here (1.0.0 being prepared): the checks were green in DzGrid (16 272 / 16 272 at its 65faeec); after the move
- * their names were renamed (`dzt-*`, `--dzt-*`) and the grid's header and HTML options moved into the bridge's options.
- * The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
+ * Run here since 2026-11-16 (the hard cases, section 12, the audit's evidence pages: once per browser, scheme and
+ * direction). The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
  */
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -57,7 +56,8 @@ async function tipsChecks(page, tag, cfg, name) {
   await page.goto(site.url(`tips.html?lang=${lang}&css=${css}${dark ? '&dark=1' : ''}${preflight ? '&preflight=1' : ''}`));
   await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 });
   await frames(page);
-  const B = '.dzt-tooltip.dzt-float';
+  // The page's bubble (the grid's own element takes the same classes once the bridge has shown it: not that one).
+  const B = '.dzt-tooltip.dzt-float:not(.dzg *)';
   const settle = () => page.waitForTimeout(450);
 
   // Tones: text 4.5:1 on its background, the arrow in the background's colour.
@@ -678,7 +678,8 @@ async function angularTips(name, lang) {
     await page.goto(site.root(`packages/angular/browser/build/index.html?page=tips${lang === 'ar' ? '&lang=ar' : ''}`));
     await page.waitForFunction(() => window.fxReady === true || window.fxError, null, { timeout: 30000 });
     check(`${tag}: the fixture runs`, !(await page.evaluate(() => window.fxError)), await page.evaluate(() => window.fxError));
-    const B = '.dzt-tooltip.dzt-float';
+    // The page's bubble (the grid's own element takes the same classes once the bridge has shown it: not that one).
+  const B = '.dzt-tooltip.dzt-float:not(.dzg *)';
     // Away first (a tooltip the pointer rests on stays: it may cover the next button), past the grace and the fade.
     const hover = async (sel) => { await page.mouse.move(890, 690); await page.waitForTimeout(400); await page.hover(sel); await page.waitForFunction((B) => { const t = document.querySelector(B); return t && !t.hidden; }, B, { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(350); };
     await hover('.fx-t1');
@@ -714,6 +715,240 @@ async function angularTips(name, lang) {
   }
 }
 
+/**
+ * (12) The hard cases (tooltips-popovers.md 25–30; the audit's evidence pages, docs/audit-floating-ui.md, made permanent):
+ * a 1 500 px popover by a button at mid height never leaves the window and its last field is reached by scrolling it
+ * (25); a 524 px popover with no room above nor below opens at the line's end, whole (26); `auto` takes the side with the
+ * most room (26); a popover follows its trigger moved by a neighbour widened and grown with no scroll (27); a tooltip
+ * follows a window resized and goes with its anchor taken out or hidden (27, 28); a toolbar's next tooltip at once (29);
+ * a popover's field and a tooltip in a modal <dialog> usable (30); a virtual anchor refused without a throw (28).
+ */
+async function robustChecks(page, tag) {
+  const settle = () => page.waitForTimeout(350);
+  const W = 900, H = 700;
+  // Fixed test elements in a layer of their own, placed by logical insets (mirrored in Arabic).
+  const clean = () => page.evaluate(() => {
+    for (const h of window.tips.values()) h.destroy();
+    for (const h of window.pops.values()) h.destroy();
+    window.tips.clear();
+    window.pops.clear();
+    document.getElementById('robust')?.remove();
+    const r = document.createElement('div');
+    r.id = 'robust';
+    document.body.append(r);
+  });
+  const inside = (r, pad = 8) => r.top >= pad - 1 && r.left >= pad - 1 && r.bottom <= H - pad + 1 && r.right <= W - pad + 1;
+  const box = (e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
+
+  // (25) A popover of 1 500 px by a button at y = 406: inside the window, its body scrolls, its last field reached.
+  await clean();
+  const tall = await page.evaluate(async () => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Haut' });
+    b.style.cssText = 'position: fixed; inset-block-start: 406px; inset-inline-start: 420px';
+    document.getElementById('robust').append(b);
+    const h = window.popover(b, { content: () => { const d = document.createElement('div'); d.style.cssText = 'inline-size: 300px; block-size: 1500px; position: relative'; const i = Object.assign(document.createElement('input'), { className: 'last' }); i.style.cssText = 'position: absolute; inset-block-end: 0'; d.append(i); return d; }, animation: 'none' });
+    window.pops.set('tall', h);
+    h.open();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const body = h.el.querySelector('.dzt-popover-body');
+    const r = h.el.getBoundingClientRect();
+    const scrolls = body.scrollHeight > body.clientHeight;
+    body.scrollTop = body.scrollHeight;
+    const last = h.el.querySelector('.last');
+    const lr = last.getBoundingClientRect();
+    const hit = document.elementFromPoint((lr.left + lr.right) / 2, (lr.top + lr.bottom) / 2) === last;
+    return { r: { top: r.top, bottom: r.bottom, left: r.left, right: r.right }, scrolls, hit, side: h.el.dataset.side };
+  });
+  check(`${tag}: (25) a 1 500 px popover stays in the window (8 px from its edges), its body scrolls, its last field reached`, inside(tall.r) && tall.scrolls && tall.hit, tall);
+
+  // (26) 524 px tall by a button at mid height: neither below nor above — the line's end, whole, beside its trigger.
+  await clean();
+  const across = await page.evaluate(async () => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Milieu' });
+    b.style.cssText = 'position: fixed; inset-block-start: 340px; inset-inline-start: 300px';
+    document.getElementById('robust').append(b);
+    const h = window.popover(b, { content: () => Object.assign(document.createElement('div'), { style: 'inline-size: 300px; block-size: 500px' }), animation: 'none' });
+    window.pops.set('across', h);
+    h.open();
+    await new Promise((r) => requestAnimationFrame(r));
+    const r = h.el.getBoundingClientRect();
+    const a = b.getBoundingClientRect();
+    return { side: h.el.dataset.side, r: { top: r.top, bottom: r.bottom, left: r.left, right: r.right, h: r.height }, beside: r.left >= a.right || r.right <= a.left };
+  });
+  check(`${tag}: (26) no room above nor below: the popover opens at the line's end, whole, beside its trigger`, across.side === 'inline-end' && inside(across.r) && across.r.h > 520 && across.beside, across);
+
+  // (26) auto: a wide tooltip by a button at the line's start, mid height — the line's end; without auto, below.
+  await clean();
+  const auto = await page.evaluate(() => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', id: 'autob', textContent: 'Auto' });
+    b.style.cssText = 'position: fixed; inset-block-start: 330px; inset-inline-start: 10px';
+    document.getElementById('robust').append(b);
+    const words = 'Un texte d’aide assez long pour remplir toute la largeur de la bulle, sur trois lignes au moins.';
+    const side = (placement) => {
+      window.tips.get('autob')?.destroy();
+      const t = window.tooltip(b, { content: words, maxWidth: 320, delayMs: 0, animation: 'none', ...(placement && { placement }) });
+      window.tips.set('autob', t);
+      t.show();
+      return document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)').dataset.side;
+    };
+    return { auto: side('auto'), none: side(undefined) };
+  });
+  check(`${tag}: (26) placement auto: the side with the most room (the line's end); none given: below`, auto.auto === 'inline-end' && auto.none === 'block-end', auto);
+
+  // (27) A popover whose trigger moves with no scroll (its neighbour widened by 250 px), then grows (26 → 64 px).
+  await clean();
+  const follow = await page.evaluate(async () => {
+    const frames = (n) => new Promise((r) => { const f = () => (--n ? requestAnimationFrame(f) : r()); requestAnimationFrame(f); });
+    const row = document.createElement('div');
+    row.style.cssText = 'position: fixed; inset-block-start: 100px; inset-inline-start: 20px; display: flex; align-items: start';
+    const spacer = document.createElement('div');
+    spacer.style.inlineSize = '50px';
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Colonne' });
+    row.append(spacer, b);
+    document.getElementById('robust').append(row);
+    const h = window.popover(b, { content: 'Filtre', animation: 'none' });
+    window.pops.set('follow', h);
+    h.open();
+    await frames(2);
+    const mid = (r) => (r.left + r.right) / 2;
+    spacer.style.inlineSize = '300px';
+    await frames(3);
+    const moved = Math.abs(mid(h.el.getBoundingClientRect()) - mid(b.getBoundingClientRect()));
+    b.style.blockSize = '64px';
+    await frames(3);
+    const grown = h.el.getBoundingClientRect().top - b.getBoundingClientRect().bottom;
+    return { moved, grown, open: h.isOpen };
+  });
+  check(`${tag}: (27) a popover follows its trigger moved with no scroll (centred within 1.5 px) and grown (no overlap)`, follow.open && follow.moved <= 1.5 && follow.grown >= 0, follow);
+
+  // (27) A tooltip shown while the window narrows from 900 to 600 px: still centred on its anchor.
+  await clean();
+  await page.evaluate(() => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', id: 'mid', textContent: 'Centre' });
+    b.style.cssText = 'position: fixed; inset-block-start: 200px; inset-inline-start: 50%; translate: -50% 0';
+    document.getElementById('robust').append(b);
+    const t = window.tooltip(b, { content: 'Suit la fenêtre', delayMs: 0, animation: 'none' });
+    window.tips.set('mid', t);
+    t.show();
+  });
+  await page.setViewportSize({ width: 600, height: H });
+  await frames(page);
+  const resized = await page.evaluate(() => {
+    const t = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)').getBoundingClientRect();
+    const a = document.getElementById('mid').getBoundingClientRect();
+    return Math.abs((t.left + t.right) / 2 - (a.left + a.right) / 2);
+  });
+  await page.setViewportSize({ width: W, height: H });
+  await frames(page);
+  check(`${tag}: (27) a tooltip shown while the window narrows: still centred on its anchor (${resized.toFixed(1)} px)`, resized <= 1.5, resized);
+
+  // (28) Its anchor taken out of the page, then another hidden by its parent: the tooltip goes.
+  const gone = await page.evaluate(async () => {
+    const wait = () => new Promise((r) => setTimeout(r, 300));
+    const bubble = () => document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)');
+    window.tips.get('mid').show();
+    document.getElementById('mid').remove();
+    await wait();
+    const removed = bubble().hidden;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position: fixed; inset-block-start: 200px; inset-inline-start: 100px';
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Caché' });
+    wrap.append(b);
+    document.getElementById('robust').append(wrap);
+    const t = window.tooltip(b, { content: 'Bientôt caché', delayMs: 0, animation: 'none' });
+    window.tips.set('hid', t);
+    t.show();
+    const shown = !bubble().hidden;
+    wrap.style.display = 'none';
+    await wait();
+    return { removed, shown, hidden: bubble().hidden };
+  });
+  check(`${tag}: (28) its anchor taken out of the page, or hidden by its parent: the tooltip goes`, gone.removed && gone.shown && gone.hidden, gone);
+
+  // (29) A toolbar of three: the first after its 500 ms; the next at once (here under 250 ms, the pointer's travel included).
+  await clean();
+  const centres = await page.evaluate(() => {
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position: fixed; inset-block-start: 520px; inset-inline-start: 300px; display: flex';
+    document.getElementById('robust').append(bar);
+    return ['Un', 'Deux', 'Trois'].map((w) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', textContent: w });
+      bar.append(b);
+      window.tips.set(w, window.tooltip(b, { content: `Outil ${w}`, animation: 'none' }));
+      const r = b.getBoundingClientRect();
+      return [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
+    });
+  });
+  const shownText = () => page.evaluate(() => { const t = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)'); return t && !t.hidden ? t.textContent : null; });
+  await page.mouse.move(2, 690);
+  await settle();
+  await page.mouse.move(...centres[0]);
+  await page.waitForTimeout(650);
+  const first = await shownText();
+  const t0 = Date.now();
+  await page.mouse.move(...centres[1], { steps: 3 });
+  const second = await page.waitForFunction(() => document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)')?.textContent === 'Outil Deux', null, { timeout: 450, polling: 'raf' }).then(() => Date.now() - t0, () => null);
+  check(`${tag}: (29) a toolbar: the first tooltip after its delay, the next at once in its place (${second} ms)`, first === 'Outil Un' && second !== null && second < 250, { first, second });
+  await page.mouse.move(2, 690);
+  await settle();
+
+  // (30) In a modal <dialog>: a popover's field takes the click and the keys; a tooltip can be hovered.
+  await clean();
+  const centre = await page.evaluate(() => {
+    const d = document.createElement('dialog');
+    d.id = 'dlg';
+    const b = Object.assign(document.createElement('button'), { type: 'button', id: 'dlgb', textContent: 'Ouvrir' });
+    const t = Object.assign(document.createElement('button'), { type: 'button', id: 'dlgt', textContent: 'Aide' });
+    d.append(b, ' ', t);
+    document.getElementById('robust').append(d);
+    d.showModal();
+    window.pops.set('dlg', window.popover(b, { content: () => window.form(), animation: 'none' }));
+    window.tips.set('dlgt', window.tooltip(t, { content: 'Aide dans le dialogue', delayMs: 0, animation: 'none' }));
+    const r = b.getBoundingClientRect();
+    return [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
+  });
+  await page.mouse.click(...centre);
+  const field = await page.evaluate(() => {
+    const i = window.pops.get('dlg').el.querySelector('.note');
+    const r = i.getBoundingClientRect();
+    return { at: [(r.left + r.right) / 2, (r.top + r.bottom) / 2], inDialog: !!i.closest('dialog'), hit: document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2) === i };
+  });
+  await page.mouse.click(...field.at);
+  await page.keyboard.type('abc');
+  const typed = await page.evaluate(() => ({ value: window.pops.get('dlg').el.querySelector('.note').value, focus: document.activeElement?.className }));
+  check(`${tag}: (30) a popover from a modal dialog: in the dialog, its field takes the click and the keys`, field.inDialog && field.hit && typed.value === 'abc' && typed.focus === 'note', { field, typed });
+  await page.keyboard.press('Escape');
+  await settle();
+  const tAt = await page.evaluate(() => { const r = document.getElementById('dlgt').getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2]; });
+  await page.mouse.move(...tAt);
+  await page.waitForTimeout(150);
+  const onIt = await page.evaluate(() => { const t = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)'); const r = t.getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2]; });
+  await page.mouse.move(...onIt, { steps: 4 });
+  await page.waitForTimeout(400);
+  const hovered = await page.evaluate(() => { const t = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)'); return { shown: !t.hidden, inDialog: !!t.closest('dialog') }; });
+  check(`${tag}: (30) a tooltip in a modal dialog: in the dialog, still shown with the pointer on it`, hovered.shown && hovered.inDialog, hovered);
+  await page.evaluate(() => document.getElementById('dlg').close());
+  await page.mouse.move(2, 690);
+
+  // (28) A virtual anchor: refused, reported once, nothing thrown.
+  const virtual = await page.evaluate(() => {
+    let told = 0;
+    const seen = (e) => { if (String(e.error?.message ?? e.message).startsWith('dztooltip: not-an-element')) { told++; e.preventDefault(); } };
+    window.addEventListener('error', seen);
+    let threw = false;
+    try {
+      window.tooltip({ getBoundingClientRect: () => new DOMRect(10, 10, 10, 10) }, { content: 'x' }).show();
+    } catch {
+      threw = true;
+    }
+    window.removeEventListener('error', seen);
+    return { told, threw };
+  });
+  check(`${tag}: (28) a virtual anchor: refused without a throw, reported once`, !virtual.threw && virtual.told === 1, virtual);
+  await clean();
+  await settle();
+}
+
 async function run(name, cfg) {
   const { css, dark, lang, preflight } = cfg;
   const tag = `${name} ${css}${dark ? ' dark' : ''} ${lang}${preflight ? ' preflight' : ''}`;
@@ -724,6 +959,8 @@ async function run(name, cfg) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await tipsChecks(page, tag, cfg, name);
+    // The hard cases once per browser, scheme and direction (their geometry does not depend on the sheet's copy).
+    if (css === 'layered' && !preflight) await robustChecks(page, tag);
     check(`${tag}: no page error`, errors.length === 0, errors);
     await page.close();
   } finally {

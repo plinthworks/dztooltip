@@ -1,6 +1,7 @@
 import { Tooltip, type TipLook, type TipTone } from './bubble.js';
 import { enhance } from './engine.js';
 import { dirAt, drawn, floatStyles, keyed, pageOf, schemeOf, wanted, type TipContent } from './float.js';
+import { isAnchor } from './follow.js';
 
 /** Its text cut (an ellipsis): wider than its box, itself or a box in it (an inline one has no box: client width 0). */
 export const cutText = (el: Element): boolean => (el.clientWidth > 0 && el.scrollWidth > el.clientWidth) || [...el.children].some(cutText);
@@ -17,6 +18,14 @@ export interface TooltipOptions extends TipLook {
   readonly when?: 'always' | 'truncated';
   /** The page's nonce for the one `<style>` it adds (a strict CSP). */
   readonly nonce?: string;
+  /**
+   * Its delay group (29): once a tooltip of the group is on screen (or hid less than 300 ms ago), resting on another
+   * anchor of the group shows its tooltip at once. A name shared by anchors anywhere; `false`: none, its own delay always.
+   * @default the anchor's parent (the buttons of one toolbar)
+   */
+  readonly group?: string | false;
+  /** Where the bubble goes in the page (30). @default the anchor's open `<dialog>`, or the page's end */
+  readonly root?: HTMLElement;
 }
 
 export interface TooltipHandle {
@@ -33,6 +42,14 @@ export interface TooltipHandle {
 const bubbles = new WeakMap<Document, Tooltip>();
 /** The anchor whose show waits for its delay, per document (18). */
 const waits = new WeakMap<Document, HTMLElement>();
+/** Each anchor's delay group (29): a name, its parent, or none. */
+const groups = new WeakMap<Element, () => unknown>();
+/** The tooltip on screen, or the one that hid less than 300 ms ago, is in the same group as `el` (29). */
+const warm = (t: Tooltip | undefined, el: HTMLElement): boolean => {
+  const k = groups.get(el)?.();
+  const was = t && (t.anchor && !t.el.hidden ? t.anchor : t.recent);
+  return k != null && !!was && groups.get(was)?.() === k;
+};
 function bubbleOf(doc: Document, nonce: string | undefined): Tooltip {
   let t = bubbles.get(doc);
   // A page that emptied its body (a single-page app's view swap) gets it back.
@@ -67,6 +84,8 @@ function bubbleOf(doc: Document, nonce: string | undefined): Tooltip {
  * move onto it; Escape, a press, a scroll or the pointer leaving hide it. `aria-describedby` on `el` while shown.
  */
 export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle {
+  // Not an element (a virtual anchor): reported, a handle that does nothing (28).
+  if (!isAnchor(el, 'tooltip(el)')) return { show() {}, hide() {}, update() {}, shown: false, destroy() {} };
   const doc = el.ownerDocument;
   let o = options;
   const page = pageOf(doc);
@@ -74,6 +93,7 @@ export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle
   const on = (t: EventTarget, type: string, fn: (e: Event) => void, capture = false): void => t.addEventListener(type, fn, { signal: ac.signal, capture, passive: true });
   const tip = (): Tooltip => bubbleOf(doc, o.nonce);
   const mine = (): boolean => bubbles.get(doc)?.anchor === el;
+  groups.set(el, () => (o.group === false ? null : o.group ?? el.parentElement));
   const show = (delay: number): void => {
     // An open popover's trigger shows none (tooltips-popovers.md 14).
     if (o.disabled || el.matches('[aria-haspopup][aria-expanded=true]') || (o.when === 'truncated' && !cutText(el))) return;
@@ -87,7 +107,9 @@ export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle
     t.el.dir = d;
     schemeOf(t.el, el);
     waits.set(doc, el);
-    t.showFor(el, { text: c.text, node: c.node, ...(c.gone && { gone: c.gone }), tone: look.tone }, d, delay);
+    // Its group warm: at once, in place of the one shown (29).
+    if (delay > 0 && warm(t, el)) delay = 0;
+    t.showFor(el, { text: c.text, node: c.node, ...(c.gone && { gone: c.gone }), tone: look.tone, root: look.root }, d, delay);
   };
   // A show waiting for this anchor dropped too (tooltips-popovers.md 18).
   const hide = (): void => {

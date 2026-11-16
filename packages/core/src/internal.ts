@@ -9,3 +9,4 @@ export { logicalBox, placementOf, type Dir } from './dir.js';
 export { Scope } from './scope.js';
 export { describe, setAttr, setPx } from './write.js';
 export { cutText } from './tooltip.js';
+export { absent, isAnchor, rootFor, track } from './follow.js';

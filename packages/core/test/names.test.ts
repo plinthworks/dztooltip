@@ -25,7 +25,7 @@ describe('the page\'s tooltip and popover: the same names', () => {
     const h = tooltip(b, { content: 'Hi', shape: 'bubble', animation: 'morph', style: { '--dzt-tooltip-bubble-radius': '1rem' }, maxWidth: 200 });
     h.show();
     const el = document.querySelector<HTMLElement>('.dzt-tooltip.dzt-float')!;
-    expect([el.dataset['shape'], el.dataset['animation'], el.style.getPropertyValue('--dzt-tooltip-bubble-radius'), el.style.getPropertyValue('max-inline-size')]).toEqual(['bubble', 'morph', '1rem', '200px']);
+    expect([el.dataset['shape'], el.dataset['animation'], el.style.getPropertyValue('--dzt-tooltip-bubble-radius'), el.style.getPropertyValue('max-inline-size')]).toEqual(['bubble', 'morph', '1rem', 'min(200px, var(--dzt-available-inline-size, 100vw))']);
     expect(el.querySelector('svg')).toBeNull();
     // A path is still an app's shape (data-shape empty, its SVG).
     h.update({ shape: 'M0 0 H100 V100 H0 Z' });

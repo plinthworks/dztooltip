@@ -7,7 +7,11 @@ DzGrid's cell and header tooltips with them.
   `auto`, flip and shift, the arrow following the anchor; tones (`info`, `neutral`, `success`, `warning`, `danger`);
   ready-made shapes (`bubble`, `ticket`, `pill`) or your SVG path; CSS animations (`fade`, `scale`, `slide`, `pop`,
   `rise`, `morph`) or your own (`animate`, a GSAP timeline welcome), reduced motion respected; words, nodes, or HTML
-  cleaned. Popovers are non-modal dialogs: Escape, a press outside, Tab past the end close them. No dependency.
+  cleaned. Popovers are non-modal dialogs: Escape, a press outside, Tab past the end close them. Robust in the hard
+  cases: never bigger than the room (the content scrolls; `--dzt-viewport-padding`), the side asked then its opposite
+  then the sides across (`placement: 'auto'`: the most room), following the anchor when it moves or grows with no
+  scroll, gone with its anchor, delay groups for toolbars (`group`), inside a modal `<dialog>` (or a `root`). No
+  dependency.
 - **`@dztooltip/angular`** — `[dzTooltip]` and `[dzPopover]`: words, an `<ng-template>`, a component, or HTML through
   Angular's sanitizer and then `safeHtml`.
 - **`@dztooltip/theme`** — `dztooltip.css` (or `dztooltip.unlayered.css`, or `dztooltip.scss`): every look a CSS
@@ -20,7 +24,6 @@ DzGrid's cell and header tooltips with them.
   ```
 
   A column's `tooltip: { when: 'truncated', tone: 'warning', shape: 'pill' }` then draws its look too.
-- **`@dztooltip/gsap`** — later: richer GSAP animations (morphing shapes), only for apps that want them.
 
 ```ts
 import { tooltip, popover } from '@dztooltip/core';

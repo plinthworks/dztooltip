@@ -18,7 +18,7 @@
  */
 import type { TipLook, TipTone, TipAnimation, TooltipPlacement } from '@dztooltip/core';
 import { safeHtml } from '@dztooltip/core';
-import { closing, conceal, dress, floatStyles, forget, opening, place, placementOf, play, reveal, tips, wanted, type TipControl } from '@dztooltip/core/internal';
+import { absent, closing, conceal, dress, floatStyles, forget, opening, place, placementOf, play, reveal, tips, track, wanted, type TipControl } from '@dztooltip/core/internal';
 
 /** A grid tooltip about to show, as DzGrid hands it: its words and the column's or the cell's own look. */
 export interface GridTipLike {
@@ -36,6 +36,8 @@ export interface GridTipLike {
 export interface GridTipAnswer {
   readonly text: string;
   readonly said?: boolean;
+  /** Its own hover delay: 0 while the header buttons' group is warm (tooltips-popovers.md 29). */
+  readonly delayMs?: number;
 }
 
 /** What DzGrid's seam is told when a tooltip shows: its element (filled), the anchor, the tip, the direction, its hide. */
@@ -83,12 +85,22 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
     setup() {
       let hide: () => void = () => {};
       let report: (e: unknown) => void = () => {};
+      // Following the shown bubble's anchor (27); the header button it was on, 300 ms after it hid (29).
+      let untrack: () => void = () => {};
+      let recent: Element | null = null;
+      let recentTimer: ReturnType<typeof setTimeout> | undefined;
+      const forgetRecent = (): void => void (clearTimeout(recentTimer), (recent = null));
+      /** A header button's tooltip on screen, or hidden less than 300 ms ago, in the same grid: the next at once. */
+      const warm = (t: Element): boolean => {
+        const was = ctl.anchor ?? recent;
+        return !!was && was.matches(BUTTON) && was.closest('.dzg') === t.closest('.dzg');
+      };
       // The grid's bubble as a popover opening and the page's tooltips see it: one control for the grid's life.
       const ctl: TipControl & { anchor: Element | null } = { anchor: null, drop: () => {}, hide: () => hide(), ok: wanted };
       const tooltips: GridTooltipSeamLike = {
         targets: () => `${o.header ? `${BUTTON},` : ''}.dzg-hcell,.dzg-cell`,
         // Its name already: not described twice.
-        tipFor: (t) => (o.header && t.matches(BUTTON) ? { text: t.getAttribute('aria-label')!, said: true } : undefined),
+        tipFor: (t) => (o.header && t.matches(BUTTON) ? { text: t.getAttribute('aria-label')!, said: true, ...(warm(t) && { delayMs: 0 }) } : undefined),
         ok: (a) => wanted(a),
         ...(o.html && { html: (h: string, doc: Document) => safeHtml(h, doc) }),
         show(s) {
@@ -101,20 +113,31 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
           el.classList.add('dzt-tooltip', 'dzt-float');
           hide = s.hide;
           ctl.anchor = anchor;
+          forgetRecent();
           tips.set(el, ctl);
           // Dressed (its preset, shape, variables; the column's over the grid's) before it shows, then placed.
           reveal(el, o, tip.tone, () => dress(el, o, tip));
-          place(el, anchor, dir, ...placementOf(tip.placement ?? o.placement, dir, 'bottom-start'), o.flip !== false);
+          const p = tip.placement ?? o.placement;
+          const at = [...placementOf(p, dir, 'bottom-start'), o.flip !== false, p === 'auto'] as const;
+          place(el, anchor, dir, ...at);
+          // Followed while shown; its anchor gone: hidden the grid's way (27, 28).
+          untrack();
+          untrack = track(anchor, el, () => (absent(anchor) ? s.hide() : void place(el, anchor, dir, ...at)));
           // An opening (not a move to another cell): the page's tooltip hidden, the app's animation told.
           if (opening(ctl)) play(el, o, 'open', report);
         },
         hide(el, done) {
           closing(ctl);
+          untrack();
+          untrack = () => {};
+          forgetRecent();
+          recent = ctl.anchor;
+          recentTimer = setTimeout(forgetRecent, 300);
           ctl.anchor = null;
           return conceal(el, o, done, report);
         },
       };
-      return { tooltips, destroy: () => forget(ctl) };
+      return { tooltips, destroy: () => (untrack(), forgetRecent(), forget(ctl)) };
     },
   };
 }

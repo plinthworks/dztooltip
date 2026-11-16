@@ -18,11 +18,13 @@ export const FLOAT_CSS =
   // The page's colour scheme (tooltips-popovers.md 19): `light-dark()` and the system colours resolve as the anchor's.
   '@layer dztooltip.layout{:where(.dzt-float){position:fixed;margin:0;z-index:10;box-sizing:border-box;color-scheme:var(--tz-color-scheme,light dark)}' +
   ':where(.dzt-float[popover]){inset:auto;overflow:visible;border:0;padding:0;background:transparent;color:inherit}' +
-  ':where(.dzt-tooltip){max-inline-size:20rem;padding:.25rem .5rem;border-radius:var(--dzt-radius,.375rem);background:var(--dzt-tooltip-bg,var(--tz-fg,CanvasText));color:var(--dzt-tooltip-fg,var(--tz-bg,Canvas))}' +
-  ':where(.dzt-popover){max-inline-size:min(32rem,calc(100vw - 16px));padding:var(--dzt-popover-padding,.75rem);border:1px solid var(--dzt-popover-border,var(--tz-border,GrayText));' +
+  ':where(.dzt-tooltip){max-inline-size:min(20rem,var(--dzt-available-inline-size,100vw));max-block-size:var(--dzt-available-block-size,none);padding:.25rem .5rem;border-radius:var(--dzt-radius,.375rem);background:var(--dzt-tooltip-bg,var(--tz-fg,CanvasText));color:var(--dzt-tooltip-fg,var(--tz-bg,Canvas))}' +
+  ':where(.dzt-popover){max-inline-size:min(32rem,var(--dzt-available-inline-size,calc(100vw - 16px)));padding:var(--dzt-popover-padding,.75rem);border:1px solid var(--dzt-popover-border,var(--tz-border,GrayText));' +
   'border-radius:var(--dzt-popover-radius,var(--dzt-radius,.375rem));background:var(--dzt-popover-bg,var(--tz-bg,Canvas));color:var(--dzt-popover-fg,var(--tz-fg,CanvasText))}' +
-  // A tall content scrolls in its body, kept inside the window.
-  ':where(.dzt-popover-body){max-block-size:var(--dzt-popover-max-height,calc(100vh - 32px));overflow:auto;overscroll-behavior:contain}}';
+  // Never bigger than the room (tooltips-popovers.md 25): a popover's tall content scrolls in its body, a tall tooltip
+  // in itself (marked by the placement).
+  ':where(.dzt-tooltip[data-overflow]){overflow:auto;overscroll-behavior:contain}' +
+  ':where(.dzt-popover-body){max-block-size:min(var(--dzt-popover-max-height,calc(100vh - 32px)),var(--dzt-available-block-size,100vh));overflow:auto;overscroll-behavior:contain}}';
 
 /** Once per document: the layout above, with the page's nonce when it has a strict policy. */
 export function floatStyles(doc: Document, nonce?: string): void {

@@ -34,9 +34,15 @@ for (const c of COPIES) {
   describe(`dztooltip${c}.css`, () => {
     it('the plain tooltip: its box, colours and text each a variable, the palette\'s by default', () => {
       const b = body('.dzt-tooltip');
-      for (const d of ['max-inline-size: var(--dzt-tooltip-max-width, 20rem);', 'padding-block: var(--dzt-tooltip-padding-block, 0.25rem);', 'padding-inline: var(--dzt-tooltip-padding-inline, 0.5rem);',
+      for (const d of ['max-inline-size: min(var(--dzt-tooltip-max-width, 20rem), var(--dzt-available-inline-size, 100vw));', 'max-block-size: var(--dzt-available-block-size, none);', 'padding-block: var(--dzt-tooltip-padding-block, 0.25rem);', 'padding-inline: var(--dzt-tooltip-padding-inline, 0.5rem);',
         'border-radius: var(--dzt-tooltip-radius, var(--dzt-radius, 0.375rem));', 'color: var(--dzt-tooltip-fg, var(--tz-bg));', 'background: var(--dzt-tooltip-bg, var(--tz-fg));',
         'font-size: var(--dzt-tooltip-font-size, inherit);', 'white-space: var(--dzt-tooltip-white-space, normal);']) expect(b, d).toContain(d);
+    });
+
+    it('1.0.0 (sheet 25): the room — 8 px from the window\'s edges, an app\'s :root over it; widths and the tooltip\'s height held to the room', () => {
+      expect(body(':where(:root)')).toBe('--dzt-viewport-padding: 8px;');
+      expect(body('.dzt-popover')).toContain('max-inline-size: min(var(--dzt-popover-max-width, 32rem), var(--dzt-available-inline-size, calc(100vw - 16px)));');
+      expect(body('.dzt-tooltip')).toContain('max-block-size: var(--dzt-available-block-size, none);');
     });
 
     it('five tones, each its background, text, edge and arrow as variables; today\'s info by default', () => {

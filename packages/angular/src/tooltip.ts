@@ -92,6 +92,10 @@ export class DzTooltip {
   readonly dzTooltipAnimate = input<TipAnimate>();
   readonly dzTooltipDelay = input<number>();
   readonly dzTooltipDisabled = input<boolean>(false);
+  /** Its delay group (sheet 29): a name shared by anchors anywhere, `false` none. @default the anchor's parent */
+  readonly dzTooltipGroup = input<string | false>();
+  /** Where the bubble goes in the page (sheet 30). @default the anchor's open `<dialog>`, or the page's end */
+  readonly dzTooltipRoot = input<HTMLElement>();
   #handle: TooltipHandle | null = null;
 
   constructor() {
@@ -106,7 +110,7 @@ export class DzTooltip {
       const o = {
         content: what == null || typeof what === 'string' ? (what ?? '') : ɵdzDraw(what, () => untracked(this.dzTooltipContext), () => untracked(this.dzTooltipInputs), () => this.hide(), ng),
         disabled: this.dzTooltipDisabled() || what == null || what === '',
-        ...ɵdefined({ placement: this.dzTooltipPlacement(), flip: this.dzTooltipFlip(), shape: this.dzTooltipShape(), reducedMotion: this.dzTooltipReducedMotion(), tone: this.dzTooltipTone(), animation: this.dzTooltipAnimation(), animate: this.dzTooltipAnimate(), delayMs: this.dzTooltipDelay(), style: this.dzTooltipStyle(), maxWidth: this.dzTooltipMaxWidth(), when: this.dzTooltipWhen() }),
+        ...ɵdefined({ placement: this.dzTooltipPlacement(), flip: this.dzTooltipFlip(), shape: this.dzTooltipShape(), reducedMotion: this.dzTooltipReducedMotion(), tone: this.dzTooltipTone(), animation: this.dzTooltipAnimation(), animate: this.dzTooltipAnimate(), delayMs: this.dzTooltipDelay(), style: this.dzTooltipStyle(), maxWidth: this.dzTooltipMaxWidth(), when: this.dzTooltipWhen(), group: this.dzTooltipGroup(), root: this.dzTooltipRoot() }),
       };
       untracked(() => (this.#handle ? this.#handle.update(o) : (this.#handle = tooltip(el, o))));
     });

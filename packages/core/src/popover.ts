@@ -2,6 +2,7 @@ import { place, reveal, tips, type TipLook } from './bubble.js';
 import { conceal, dress, play } from './engine.js';
 import { logicalBox, placementOf } from './dir.js';
 import { dirAt, drawn, floatStyles, schemeOf, wanted, type TipContent } from './float.js';
+import { absent, isAnchor, rootFor, track } from './follow.js';
 
 /** Why a popover closed (tooltips-popovers.md 10, 13, 14). */
 export type PopoverCloseReason = 'escape' | 'outside' | 'focus' | 'trigger' | 'code' | 'group' | 'gone';
@@ -18,6 +19,8 @@ export interface PopoverOptions extends TipLook {
   readonly openOn?: 'click' | 'manual';
   /** The page's nonce for the one `<style>` it adds (a strict CSP). */
   readonly nonce?: string;
+  /** Where the bubble goes in the page (30). @default the trigger's open `<dialog>`, or the page's end */
+  readonly root?: HTMLElement;
   readonly onOpen?: () => void;
   readonly onClose?: (reason: PopoverCloseReason) => void;
 }
@@ -54,16 +57,18 @@ let ids = 0;
 /**
  * Gives `trigger` a popover: a non-modal dialog opened by a click (or by code), closed by Escape (focus back to the
  * trigger), a press outside, the focus leaving, the trigger again, or code. Placed like a tooltip, in the top layer,
- * followed on scroll and resize; closed when its trigger leaves the page or the window, or its grid row is recycled.
+ * followed while open (27); closed when its trigger leaves the page or the window, stops being drawn, or its grid row
+ * is recycled.
  */
 export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverHandle {
+  // Not an element (a virtual anchor): reported, a handle that does nothing (28).
+  if (!isAnchor(trigger, 'popover(trigger)')) return { open() {}, close() {}, toggle() {}, isOpen: false, el: null, reposition() {}, update() {}, destroy() {} };
   const doc = trigger.ownerDocument;
   const win = doc.defaultView;
   let o = options;
   let cur: Open | null = null;
   let stop: AbortController | null = null;
   let gone: (() => void) | undefined;
-  let frame = 0;
   /** A closing still running: what ends it (a destroy ends it at once). */
   let pending: (() => void) | null = null;
   trigger.id ||= `dzt-pt-${++ids}`;
@@ -74,12 +79,12 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
   const rowOf = (): string | null => trigger.closest('[aria-rowindex]')?.getAttribute('aria-rowindex') ?? null;
   let row: string | null = null;
 
-  /** Where it goes (`placement`, below and centred by default; `flip` false: never to the other side). */
+  /** Where it goes (`placement`, below and centred by default; `flip` false: the side asked; `'auto'`: the most room). */
   const placeIt = (): void => {
     if (!cur) return;
     const dir = dirAt(trigger);
     const [side, align] = placementOf(o.placement, dir, 'bottom');
-    place(cur.bubble, trigger, dir, side, align, o.flip !== false);
+    place(cur.bubble, trigger, dir, side, align, o.flip !== false, o.placement === 'auto');
   };
   /** The trigger still seen: inside the window and every scrolling box around it (it is clipped there otherwise). */
   const seen = (): boolean => {
@@ -94,13 +99,9 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
     return true;
   };
   const follow = (): void => {
-    frame = 0;
     if (!cur) return;
-    if (!trigger.isConnected || !seen() || rowOf() !== row) return close('gone');
+    if (absent(trigger) || !seen() || rowOf() !== row) return close('gone');
     placeIt();
-  };
-  const soon = (): void => {
-    if (!frame && cur) frame = win?.requestAnimationFrame?.(follow) ?? (follow(), 0);
   };
 
   function open(): void {
@@ -125,7 +126,8 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
     else body.textContent = c.text;
     bubble.append(body);
     bubble.hidden = true;
-    doc.body.append(bubble);
+    // In the trigger's open dialog, or the root given (30): inert nowhere.
+    rootFor(trigger, o.root).append(bubble);
     const me: Open = {
       bubble, group, kids: new Set(), parent,
       has: (n) => !!n && (bubble.contains(n) || trigger.contains(n) || [...me.kids].some((k) => k.has(n))),
@@ -181,23 +183,11 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
       const to = (e as FocusEvent).relatedTarget as Node | null;
       if (to && !me.has(to)) close('focus');
     });
-    on(doc, 'scroll', soon, true);
-    // Its content changing size (a form growing, a grid loading): placed again at the next frame.
-    const Resize = win?.ResizeObserver;
-    if (Resize) {
-      const ro = new Resize(soon);
-      ro.observe(bubble);
-      stop.signal.addEventListener('abort', () => ro.disconnect());
-    }
-    if (win) on(win, 'resize', soon);
-    // Its trigger taken out of the page or its row showing another with no scroll (a view swapped, a sort, a grid
-    // destroyed): checked at the next frame too.
-    const Mut = win?.MutationObserver;
-    if (Mut) {
-      const mo = new Mut(soon);
-      mo.observe(doc.body, { subtree: true, childList: true, attributeFilter: ['aria-rowindex'] });
-      stop.signal.addEventListener('abort', () => mo.disconnect());
-    }
+    // Followed (27): a scroll, the window, its content or its trigger changing size, its trigger moving with no scroll;
+    // its trigger taken out of the page or its row showing another (a view swapped, a sort, a grid destroyed) — at the
+    // next frame.
+    const untrack = track(trigger, bubble, follow, () => rowOf() !== row, ['aria-rowindex']);
+    stop.signal.addEventListener('abort', untrack);
     play(bubble, o, 'open', report);
     // Into it when it has something to focus (an `autofocus` first); else the focus stays on the trigger.
     const first = bubble.querySelector<HTMLElement>('[autofocus]') ?? bubble.querySelector<HTMLElement>(FOCUSABLE);
@@ -214,8 +204,6 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
     me.parent?.kids.delete(me);
     stop?.abort();
     stop = null;
-    if (frame) win?.cancelAnimationFrame?.(frame);
-    frame = 0;
     trigger.setAttribute('aria-expanded', 'false');
     trigger.removeAttribute('aria-controls');
     // Escape, the trigger or code with the focus inside: back to the trigger (never after a press elsewhere).

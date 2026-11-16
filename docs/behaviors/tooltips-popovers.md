@@ -47,8 +47,9 @@ the keyboard; clicks a control that opens a bubble that stays (a popover); press
    start or end) — optionally followed by `-start` or `-end` to line its start or end up with the anchor's along the
    other axis (for `top` / `bottom` the line's start and end; for the inline sides, the top and the bottom); without it
    the bubble is centred on its anchor: 12 placements, and `auto` — below, the grid's at its cell's start (1.11's place),
-   a page's centred. When the window has no room on that side and has on the opposite one it flips there (`flip: false`
-   keeps the side asked); along the other axis it slides to stay inside the window. An arrow points at the anchor's
+   a page's centred (an explicit `'auto'`: the side with the most room, 26). When the window has no room on that side it
+   tries the opposite one, then the sides across (26; `flip: false` keeps the side asked); along the other axis it
+   slides to stay inside the window, `--dzt-viewport-padding` from its edges; it is never bigger than the room (25). An arrow points at the anchor's
    middle, kept 12 px inside the bubble's corners; it follows the flip. `data-side` tells the side it opened on, in
    logical terms. In the grid the placement (grid-wide, or a column's `{ placement }`) needs `tooltips()`.
 5. It is not interactive: the pointer may rest on it, but nothing in it is meant to be focused or clicked (the
@@ -141,7 +142,8 @@ the keyboard; clicks a control that opens a bubble that stays (a popover); press
     recycled to show another row (its `aria-rowindex` changed). A tall content scrolls inside it (its body is capped
     at the window's height less 32 px, `--dzg-popover-max-height`), its arrow outside that body, never clipped. The
     arrow stays 12 px inside the bubble's corners (the default radius, 6 px, plus half the arrow): a radius over 6 px
-    wants a smaller arrow. The window's edges are not padded: a bubble may touch them (1.12.0's tooltip did).
+    wants a smaller arrow. The window's edges are padded by `--dzt-viewport-padding` (25; 0 without the theme: a bubble may touch them, as
+    1.12.0's tooltip did). It also follows its trigger when it moves or grows with no scroll (27).
 14. One open at a time in a group (`group`, `'default'` unless given): opening one closes the others of its group,
     except one it is nested in (a popover opened from inside another keeps its parent open). A tooltip shown while a
     popover is open stays possible (on another element); the popover's trigger shows no tooltip while it is open.
@@ -172,8 +174,8 @@ the keyboard; clicks a control that opens a bubble that stays (a popover); press
     the focus leaving, a scroll and `disabled: true` (as before); the page's and the grid's go when a popover opens from
     their anchor or inside it. A grid's shown cell tooltip still stays on a press (tooltips.md). A shown tooltip whose
     anchor only turns `disabled` by its attribute stays until the pointer or the focus leaves it (nothing watches the
-    attribute); one whose anchor leaves the page goes with `destroy()` (Angular: the directive's end), the grid's at its
-    next paint.
+    attribute); one whose anchor leaves the page or stops being drawn goes at the next frame (28; before 1.0.0: with `destroy()`), the grid's
+    too.
 19. **Tooltips and popovers follow the colour scheme of their anchor's context, as the grid does.** The bubble takes
     `color-scheme: var(--tz-color-scheme, light dark)` (in the layout injected with `tooltip()` / `popover()`: the
     layered and unlayered sheets alike), so its `light-dark()` colours (the palette's `--tz-*`) and the system colours
@@ -184,6 +186,52 @@ the keyboard; clicks a control that opens a bubble that stays (a popover); press
     at its next opening). An app's own dark class is mapped once: `.my-dark { --tz-color-scheme: dark }` (and
     `:root:not(.my-dark) { --tz-color-scheme: light }` to force light). The page's `color-scheme` property alone is not
     read (the grid does not read it either: without `--tz-color-scheme`, both follow the system).
+
+### Robust in the hard cases (owner 2026-11-16, « ★ partout »: the audit's six gaps closed before 1.0.0)
+Behaviour from Floating UI's public documentation only (size, flip, autoPlacement, autoUpdate, FloatingDelayGroup,
+FloatingPortal), in our words; `docs/audit-floating-ui.md` holds the evidence pages these lines answer.
+
+25. **Never bigger than the room (size).** Once its side is chosen the bubble is told the room it has there: on its
+    side, from the gap by its anchor to the window's edge; across, the window's width (or height) — each less the
+    padding to the window's edges. It never grows past that room: a popover's body scrolls inside (its arrow outside,
+    never clipped); a tooltip taller than its room scrolls itself (`data-overflow`; its arrow is then clipped — a tooltip
+    that tall wants to be a popover). The room is written on the bubble as `--dzt-available-block-size` and
+    `--dzt-available-inline-size` (px, for an app's CSS too; a popover's body gets its own block room, the bubble's
+    padding and edge taken off). `--dzt-viewport-padding` (px; 0 without the theme, `8px` with it) keeps the bubble that
+    far from the window's edges: in the room, in the slide along the other axis and in the choice of a side.
+26. **The side chosen (flip, auto).** The side asked when the bubble fits there whole; otherwise its opposite; otherwise
+    the two sides across (asked above or below: the line's end, then its start; asked at the start or the end: below,
+    then above) — the first where it fits whole. When it fits nowhere: the side where the most of it can be seen once
+    its size is held to the room (the side asked first on a tie). `flip: false` keeps the side asked (its size still held
+    to the room). `placement: 'auto'` picks, among the sides where it fits, the one with the most room left around it
+    (below, above, the line's end, its start on a tie); none fits: as above. No placement given stays below (a grid's at
+    its cell's start) with the fallbacks above — a popover of 524 px no longer opens 140 px off screen while the room is
+    on its right.
+27. **Following the anchor (autoUpdate).** While a tooltip or a popover is on screen it is placed again, at most once
+    per frame, when its anchor changes size, the bubble changes size, the anchor moves with no scroll (a column widened,
+    a panel folded: an `IntersectionObserver` fitted to the anchor's box, fitted again after each placement), the window
+    is resized, a box around it scrolls (a popover; a page tooltip still hides on a scroll, 18), or nodes are added to
+    or taken from the page. Nothing is watched while it is closed: the observers are made when it shows and taken down
+    when it closes.
+28. **The anchor gone.** Checked at the same frames: a tooltip whose anchor left the page or is no longer drawn
+    (`display: none` on it or around it, `visibility: hidden`) hides — the page's with its closing, a grid's through the
+    grid's own hide; a popover closes (`gone`), now also when its trigger is no longer drawn. An anchor that is not an
+    element (a virtual one: a rectangle, a cursor — later, owner B) is refused without throwing: `tooltip()` and
+    `popover()` give back a handle that does nothing and report one error (`reportError`, a `TypeError` whose message
+    starts `dztooltip: not-an-element` and names the argument, `tooltip(el)` or `popover(trigger)` — nothing of the
+    value itself).
+29. **Delay groups (a toolbar).** A tooltip on screen makes its group warm: resting on another anchor of the same group
+    shows that one's tooltip at once, in place of the first (it jumps, 7: no closing and opening between) — while a
+    tooltip of the group is on screen, and for 300 ms after it hid. The group (owner A, automatic): the anchor's parent by
+    default (the buttons of one toolbar), `group: 'name'` for anchors anywhere that share a name, `group: false` for an
+    anchor that always waits its own delay. A keyboard focus shows at once anyway (2). With the bridge and `header:
+    true`, a grid's header buttons are one group; the grid's cell and header tooltips keep the grid's delay (DzGrid
+    decides when they show).
+30. **Inside a modal `<dialog>` (FloatingPortal).** A bubble opened from an anchor inside an open `<dialog>` is put in
+    that dialog (its last child) rather than at the page's end, so a modal dialog does not make it inert: a popover's
+    fields take clicks and the focus, a tooltip can be hovered. It is still shown in the top layer, above the dialog.
+    `root: element` (`tooltip()`, `popover()`, `[dzTooltipRoot]`, `[dzPopoverRoot]`) puts it in that element instead (an
+    app's own modal layer).
 
 ## What DzGrid does
 - **One implementation, the weight opt-in** (owner Q-T1 B, 2026-11-14): the base (`render/tooltip.ts`) places (one
@@ -246,4 +294,7 @@ without the cleaner, compatibility), `popover.test.ts` (click, Escape, outside, 
 ARIA, group and nesting, scroll and recycling), `safe-html.test.ts` (hand-written hostile inputs);
 `packages/theme/test/tooltips-sheet.test.ts`; `packages/angular/test/tooltip-directives.test.ts`; browser:
 `scripts/browser-1-12.mjs` (tones, presets, reduced motion, flips, popover gestures, focus, outside the grid, cleaned
-HTML, a component and a template, axe).
+HTML, a component and a template, axe). Since the move (DzTooltip): `packages/core/test/float-place.test.ts` (25, 26:
+the room, the padding, the fallbacks, `auto`), `follow.test.ts` (27, 28, 30), `tooltip-group.test.ts` (29),
+`packages/dzgrid/test/tooltip-robust-grid.test.ts` (27–29 in a grid); browser: `scripts/browser.mjs` section 12, « the
+hard cases » (25–30, the audit's evidence pages).

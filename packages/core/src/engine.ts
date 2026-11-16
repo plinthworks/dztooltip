@@ -54,7 +54,8 @@ export function dress(el: HTMLElement, look: TipLook, tip: { readonly [K in keyo
   for (const k of worn.get(el) ?? []) el.style.removeProperty(k);
   const w = tip.maxWidth ?? look.maxWidth;
   const put = Object.entries({ ...look.style, ...tip.style }).filter(([k]) => k.startsWith('--'));
-  if (w != null) put.push(['max-inline-size', typeof w == 'number' ? `${w}px` : w]);
+  // Its widest, still never wider than the room (25).
+  if (w != null) put.push(['max-inline-size', `min(${typeof w == 'number' ? `${w}px` : w}, var(--dzt-available-inline-size, 100vw))`]);
   for (const [k, v] of put) el.style.setProperty(k, v);
   worn.set(el, put.map(([k]) => k));
 }
@@ -125,12 +126,17 @@ export function opening(me: { hide(): void }): boolean {
 export const closing = (me: object): void => void (shown === me && (shown = null));
 
 /**
- * Gives a base bubble the opt-in behaviour: its placement (`auto` meaning `auto`), the app's animation, the awaited
- * closing, one at a time in the page.
+ * Gives a base bubble the opt-in behaviour: its placement (none: below; an explicit `'auto'`: the most room, 26), the
+ * app's animation, the awaited closing, one at a time in the page.
  */
 export function enhance(t: Tooltip, auto: 'bottom' | 'bottom-start', report: (e: unknown) => void): void {
   // Dressed before it is measured: its shape and width count (the tip's own look over the bubble's).
-  t.at = (tip, dir) => (dress(t.el, t.look(), tip), [...placementOf(tip.placement ?? t.look().placement, dir, auto), t.look().flip !== false]);
+  t.at = (tip, dir) => {
+    dress(t.el, t.look(), tip);
+    const p = tip.placement ?? t.look().placement;
+    // An explicit `auto`: the side with the most room (26).
+    return [...placementOf(p, dir, auto), t.look().flip !== false, p === 'auto'];
+  };
   // A column's own hover delay (a keyboard focus stays at once).
   const showFor = t.showFor.bind(t);
   t.showFor = (a, tip, dir, delay) => showFor(a, tip, dir, delay > 0 ? tip.delayMs ?? delay : delay);

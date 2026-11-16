@@ -131,7 +131,7 @@ it('1.12.0 (sheet 20–23): a ready-made shape, the morph, variables, a width an
   enter('.b6');
   vi.advanceTimersByTime(0);
   const b = bubble()!;
-  expect([b.hidden, b.dataset['shape'], b.dataset['animation'], b.style.getPropertyValue('--dzt-tooltip-bubble-radius'), b.style.getPropertyValue('max-inline-size')]).toEqual([false, 'bubble', 'morph', '1rem', '180px']);
+  expect([b.hidden, b.dataset['shape'], b.dataset['animation'], b.style.getPropertyValue('--dzt-tooltip-bubble-radius'), b.style.getPropertyValue('max-inline-size')]).toEqual([false, 'bubble', 'morph', '1rem', 'min(180px, var(--dzt-available-inline-size, 100vw))']);
 });
 
 describe('dzPopover', () => {
@@ -232,4 +232,39 @@ it('1.12.0 (sheet 18): a show waiting for its delay is dropped by dzTooltipDisab
   expect(document.querySelector('.dzt-popover')).not.toBeNull();
   expect(shown()).toBe(false);
   fixture.destroy();
+});
+
+@Component({
+  selector: 't-robust',
+  imports: [DzTooltip, DzPopover],
+  template: `
+    <div class="layer" #layer></div>
+    <div><button class="g1" type="button" dzTooltip="One" dzTooltipGroup="tools">1</button></div>
+    <div><button class="g2" type="button" dzTooltip="Two" dzTooltipGroup="tools">2</button></div>
+    <button class="r1" type="button" dzTooltip="Rooted" [dzTooltipDelay]="0" [dzTooltipRoot]="layer">R</button>
+    <button class="r2" type="button" dzPopover="Popped" [dzPopoverRoot]="layer">P</button>
+  `,
+})
+class Robust {}
+
+it('1.0.0 (sheet 29, 30): dzTooltipGroup joins anchors of different containers; dzTooltipRoot and dzPopoverRoot put the bubble there', () => {
+  vi.useFakeTimers();
+  const fixture = TestBed.createComponent(Robust);
+  document.body.appendChild(fixture.nativeElement);
+  fixture.detectChanges();
+  TestBed.tick();
+  const q = (s: string) => document.querySelector<HTMLElement>(s)!;
+  const bubble = () => document.querySelector<HTMLElement>('.dzt-tooltip.dzt-float');
+  const enter = (s: string) => q(s).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+  enter('.g1');
+  vi.advanceTimersByTime(500);
+  expect(bubble()!.textContent).toBe('One');
+  q('.g1').dispatchEvent(new PointerEvent('pointerleave', { relatedTarget: q('.g2') }));
+  enter('.g2');
+  expect(bubble()!.textContent).toBe('Two');
+  enter('.r1');
+  vi.advanceTimersByTime(0);
+  expect(bubble()!.parentElement).toBe(q('.layer'));
+  q('.r2').click();
+  expect(document.querySelector('.dzt-popover')!.parentElement).toBe(q('.layer'));
 });
