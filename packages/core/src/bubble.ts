@@ -105,8 +105,11 @@ const ALL: readonly TipSide[] = ['block-end', 'block-start', 'inline-end', 'inli
  */
 export function place(el: HTMLElement, anchor: Element, dir: Dir, side: TipSide, align: TipAlign, flip = true, auto = false): TipSide {
   const win = el.ownerDocument.defaultView!;
-  const W = win.innerWidth;
-  const H = win.innerHeight;
+  // A fixed bubble's room is the viewport less its scrollbars (`right: 0` sits against a classic scrollbar, not under
+  // it): the root's client size, the window's where there is no layout.
+  const de = el.ownerDocument.documentElement;
+  const W = de.clientWidth || win.innerWidth;
+  const H = de.clientHeight || win.innerHeight;
   const box = anchor.getBoundingClientRect();
   const a = logicalBox(box, dir, W);
   const cs = getComputedStyle(el);
@@ -156,7 +159,7 @@ export function place(el: HTMLElement, anchor: Element, dir: Dir, side: TipSide,
   setAttr(el, 'data-side', used);
   el.style.setProperty('--dzt-tip-at', `${Math.round(Math.min(Math.max(12, (clo + chi) / 2 - cross), csize - 12))}px`);
   // What it was placed by, for the follower (27): placed again only when this changes.
-  placed.set(el, { box, w: ws, h: hs, W, H });
+  placed.set(el, { box, w: ws, h: hs, W: win.innerWidth, H: win.innerHeight });
   return used;
 }
 

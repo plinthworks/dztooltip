@@ -64,7 +64,9 @@ export function dirAt(el: Element): Dir {
 /** A content made into nodes for one opening: its words (what a screen reader hears), its node, what to do when it goes. */
 export function drawn(c: TipContent, doc: Document): { text: string; node: Node | null; gone?: () => void } {
   const v = typeof c === 'function' ? c() : c;
-  if (typeof v === 'string') return { text: v, node: null };
+  // None (plain JavaScript, against the types): no words, never a throw.
+  if (v == null) return { text: '', node: null };
+  if (typeof v !== 'object') return { text: String(v), node: null };
   if ('nodeType' in v) return { text: v.textContent ?? '', node: v };
   if ('html' in v) {
     const f = safeHtml(v.html, doc);

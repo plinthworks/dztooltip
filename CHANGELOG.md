@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 1.0.0
+## [1.0.0] - 2026-11-16
 
 The tooltips and popovers written for DzGrid 1.12.0 (never published there) move to their own packages (owner,
 2026-11-14, « ok partout »). Behaviour sheet: `docs/behaviors/tooltips-popovers.md` (its lines kept, names mapped).
@@ -47,6 +47,31 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
     hard cases », 12 runs: Chrome, Firefox, WebKit × light, dark × French, Arabic), and the whole matrix green; its page
     selector no longer catches the grid's bubble (19 checks had failed since the move for that reason).
 - `@dztooltip/gsap` dropped (owner 2026-11-16).
+- The 1.0.0 review (fresh eyes on `packages/`; each defect a test that failed first,
+  `packages/core/test/review-1-0-0.test.ts`):
+  - **Placed by the viewport less its scrollbars**: a fixed bubble's room is the root's client size, not the window's —
+    with a classic scrollbar, a right-to-left bubble sat a scrollbar's width off its anchor and a bubble near the end
+    could slide under the scrollbar.
+  - **A popover destroyed while its closing runs** calls its content's `gone()` once (twice before, when the closing's
+    animation ended: an Angular view destroyed twice); a destroyed popover or tooltip handle opens or shows nothing.
+  - **Nothing of a destroyed tooltip kept**: the page's bubble let go of its options (an app's template or component
+    and the view that made it), the waiting anchor and its delay group; hidden, the bubble goes back to the page's end,
+    so a `<dialog>` (or a `root`) taken out later is not kept alive by it.
+  - **No content never throws**: `content` missing or a function returning none (plain JavaScript) shows nothing; a
+    number is its words.
+  - `@dztooltip/angular` peers on Angular `^19 || ^20 || ^21 || ^22` (22 is current; as DzGrid); `@dztooltip/dzgrid` on
+    `@dzgrid/dom` `^1.13.0` (published).
+  - Checked and found fine: `safeHtml` against SVG / MathML namespaces and foreign content, `javascript:`, `style` and
+    `url(`, entities, attribute case, `noscript`, `template`, foster parenting, DOM clobbering (kept as a guard test);
+    shapes (path data only); Escape and the focus in nested popovers; observers, listeners, frames and timers taken
+    down on hide and destroy (the page's, the popover's, the bridge's); a trigger removed while opening or closing;
+    the Angular directives' destroy; messages carrying no content; logical sides and colours (the guards).
+- Release tooling as DzGrid's: `npm run release:check` (pack, the built manifests — one version, peer ranges, `dist`
+  only, no runtime dependency in core, README and LICENSE in each —, typings importing only published entries, every
+  published entry compiled by ngc with strict templates and `skipLibCheck: false` on Angular 19 and 22, DzGrid from
+  npm), `npm run publish:latest -- --otp=CODE` (core → theme → angular → dzgrid, what npm has skipped, then the
+  registry asked), `npm run publish:verify`; `docs/release-1.0.0.md`. Each package has its README; the published
+  manifests carry `repository`, `license`, `keywords`.
 - Measured (minified, gzipped; before the hard cases → now): `@dztooltip/core` whole 6 337 → 7 820 B (`tooltip()`
   alone 4 786 → 6 365, `popover()` alone 4 650 → 5 877); the bridge with core 3 199 → 4 527; `@dztooltip/angular`
   2 751 → 2 858 over core and Angular; `dztooltip.css` 3 059 → 3 126 (unlayered 3 024 → 3 081). No size budgets yet.

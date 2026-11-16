@@ -71,6 +71,8 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
   let gone: (() => void) | undefined;
   /** A closing still running: what ends it (a destroy ends it at once). */
   let pending: (() => void) | null = null;
+  /** Destroyed: opens nothing more. */
+  let dead = false;
   trigger.id ||= `dzt-pt-${++ids}`;
   trigger.setAttribute('aria-haspopup', 'dialog');
   trigger.setAttribute('aria-expanded', 'false');
@@ -105,7 +107,7 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
   };
 
   function open(): void {
-    if (cur) return;
+    if (cur || dead) return;
     floatStyles(doc, o.nonce);
     const parent = [...opened].find((p) => p.bubble.contains(trigger)) ?? null;
     const group = o.group ?? 'default';
@@ -210,13 +212,19 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
     if (me.bubble.contains(doc.activeElement) && (reason === 'escape' || reason === 'code' || reason === 'trigger')) trigger.focus();
     const g = gone;
     gone = undefined;
+    // Once: a destroy ends the closing at once, and the closing's own end (an animation settling later) then does nothing.
+    let over = false;
+    let cancel = (): void => {};
     const done = (): void => {
-      pending = null;
+      if (over) return;
+      over = true;
+      cancel();
+      if (pending === done) pending = null;
       me.bubble.remove();
       g?.();
     };
     pending = done;
-    conceal(me.bubble, o, done, report);
+    cancel = conceal(me.bubble, o, done, report);
     o.onClose?.(reason);
   }
 
@@ -242,6 +250,7 @@ export function popover(trigger: HTMLElement, options: PopoverOptions): PopoverH
     },
     destroy() {
       close('code');
+      dead = true;
       pending?.();
       trigger.removeEventListener('click', onClick);
       trigger.removeAttribute('aria-haspopup');

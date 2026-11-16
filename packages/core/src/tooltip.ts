@@ -69,6 +69,8 @@ function bubbleOf(doc: Document, nonce: string | undefined): Tooltip {
     if (tip?.node) el.replaceChildren(tip.node);
     // Words after nodes: the nodes go (the base then writes the words).
     else el.replaceChildren();
+    // Hidden for good: back at the page's end, so a dialog or a root taken out later is not kept alive by it (30).
+    if (!tip && el.parentNode !== doc.body && doc.body) doc.body.append(el);
     return !!tip?.node;
   });
   t.report = (e) => void doc.defaultView?.reportError?.(e);
@@ -94,12 +96,16 @@ export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle
   const tip = (): Tooltip => bubbleOf(doc, o.nonce);
   const mine = (): boolean => bubbles.get(doc)?.anchor === el;
   groups.set(el, () => (o.group === false ? null : o.group ?? el.parentElement));
+  /** Destroyed: shows nothing more. */
+  let dead = false;
+  /** The look this anchor gave the page's bubble at its last show: taken back at destroy (it holds the app's content). */
+  let lent: (() => TooltipOptions) | null = null;
   const show = (delay: number): void => {
     // An open popover's trigger shows none (tooltips-popovers.md 14).
-    if (o.disabled || el.matches('[aria-haspopup][aria-expanded=true]') || (o.when === 'truncated' && !cutText(el))) return;
+    if (dead || o.disabled || el.matches('[aria-haspopup][aria-expanded=true]') || (o.when === 'truncated' && !cutText(el))) return;
     const t = tip();
     const look = o;
-    t.look = () => look;
+    t.look = lent = () => look;
     const c = drawn(look.content, doc);
     if (!c.text && !c.node) return void c.gone?.();
     // Its words read in the anchor's direction, and its logical place measured in it.
@@ -141,8 +147,16 @@ export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle
     },
     destroy() {
       hide();
+      dead = true;
       ac.abort();
       page.escape.delete(escape);
+      groups.delete(el);
+      // Nothing of a destroyed anchor kept by the page's bubble: not the anchor, not its options (an app's template or
+      // component and the view that made it).
+      if (waits.get(doc) === el) waits.delete(doc);
+      const t = bubbles.get(doc);
+      if (t && lent && t.look === lent) t.look = () => ({});
+      lent = null;
     },
   };
 }

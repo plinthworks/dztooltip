@@ -9,7 +9,7 @@
     "@dztooltip/core": "1.0.0"
   },
   "peerDependencies": {
-    "@dzgrid/dom": "^1.12.0"
+    "@dzgrid/dom": "^1.13.0"
   },
   "exports": {
     ".": { "types": "./src/index.ts", "default": "./src/index.ts" },

@@ -14,12 +14,16 @@ const pkg = (name) => join(root, 'packages', name);
 const read = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const run = (cmd, args, cwd = root) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 
+/** What each package is found by on npm, besides the shared words. */
+const KEYWORDS = { core: ['floating', 'dialog', 'html-sanitizer', 'no-dependency'], angular: ['angular', 'directive', 'signals'], theme: ['css', 'theme', 'css-variables'], dzgrid: ['dzgrid', 'data-grid', 'grid'] };
+
 const shared = (name) => ({
   license: 'MIT',
   repository: { type: 'git', url: 'git+https://github.com/plinthworks/dztooltip.git', directory: `packages/${name}` },
   homepage: 'https://github.com/plinthworks/dztooltip#readme',
   bugs: { url: 'https://github.com/plinthworks/dztooltip/issues' },
-  keywords: ['tooltip', 'popover', 'placement', 'animation', 'rtl', 'accessibility'],
+  author: 'Plinthworks',
+  keywords: ['tooltip', 'popover', 'placement', 'animation', 'rtl', 'accessibility', ...KEYWORDS[name]],
 });
 
 /** The workspace's own packages, pinned to the versions being built together. */

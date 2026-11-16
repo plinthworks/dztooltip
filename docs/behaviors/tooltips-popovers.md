@@ -198,7 +198,9 @@ FloatingPortal), in our words; `docs/audit-floating-ui.md` holds the evidence pa
     that tall wants to be a popover). The room is written on the bubble as `--dzt-available-block-size` and
     `--dzt-available-inline-size` (px, for an app's CSS too; a popover's body gets its own block room, the bubble's
     padding and edge taken off). `--dzt-viewport-padding` (px; 0 without the theme, `8px` with it) keeps the bubble that
-    far from the window's edges: in the room, in the slide along the other axis and in the choice of a side.
+    far from the window's edges: in the room, in the slide along the other axis and in the choice of a side. The
+    window here is the viewport less its scrollbars (review 1.0.0): a fixed bubble's end edge is the scrollbar's, so a
+    bubble never slides under it and a right-to-left one is measured from it.
 26. **The side chosen (flip, auto).** The side asked when the bubble fits there whole; otherwise its opposite; otherwise
     the two sides across (asked above or below: the line's end, then its start; asked at the start or the end: below,
     then above) — the first where it fits whole. When it fits nowhere: the side where the most of it can be seen once

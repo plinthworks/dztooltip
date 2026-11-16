@@ -33,6 +33,8 @@ npm run typecheck   # core, the bridge, the tests, Angular (ngc, strict template
 npm run build       # packages/*/dist; refuses a manifest pointing at src/ and a runtime dependency in core
 npm run pack:local  # tarballs into packed/
 npm run test:browser  # real browsers (playwright-core, Chrome, Firefox, WebKit), one at a time — wired, see its header
+npm run release:check # pack, the built manifests and typings, every published entry compiled by ngc (Angular 19 and 22)
+npm run publish:latest -- --otp=CODE  # the owner only: core → theme → angular → dzgrid, then the registry asked
 ```
 
 `npm install` needs `legacy-peer-deps` (set in `.npmrc`).
