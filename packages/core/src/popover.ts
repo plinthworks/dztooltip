@@ -4,7 +4,7 @@ import { logicalBox, placementOf, pointOf, type Pt } from './dir.js';
 import { dirAt, drawn, floatStyles, keyed, pageOf, schemeOf, wanted, type TipContent } from './float.js';
 import { absent, isAnchor, track } from './follow.js';
 import { boxOf, contextOf, docOf, holds, hostsOf, isElement, pointed, rootFor, tie, type VirtualAnchor } from './anchor.js';
-import { FOCUSABLE, controlsIn, firstFocus, guards, hasInert, shut } from './focus.js';
+import { FOCUSABLE, controlsIn, drawnControl, firstFocus, guards, hasInert, shut, tabStaysIn } from './focus.js';
 import { safeZone } from './safe.js';
 import { Ears } from './write.js';
 
@@ -248,16 +248,16 @@ export function popover(anchor: HTMLElement | VirtualAnchor, options: PopoverOpt
       const k = e as KeyboardEvent;
       if (k.key !== 'Tab' || k.defaultPrevented) return;
       const mine = controlsIn(bubble);
-      const at = mine.indexOf(bdoc.activeElement as HTMLElement);
-      // On the bubble itself (a click on its words), Tab goes on to its first control.
-      if (k.shiftKey ? at > 0 : at < mine.length - 1 && (at >= 0 || bdoc.activeElement === bubble)) return;
+      // A control on the way, after (or before) the focus: the browser's own move (from the bubble itself, a click on
+      // its words, or a heading given the focus, too).
+      if (tabStaysIn(mine, bdoc.activeElement, k.shiftKey)) return;
       e.preventDefault();
       // Modal: Tab wraps inside (36).
       if (isModal) return void (k.shiftKey ? mine[mine.length - 1] ?? bubble : mine[0] ?? bubble).focus();
       // The bubble lives at the page's end, the trigger anywhere: Tab past its last control goes on to what follows
       // the trigger (its shadow host, 33), Shift+Tab before its first back to the trigger — the page's order, as if it
       // sat after its trigger. A virtual popover: back where the focus was.
-      const all = [...doc.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => !me.has(x) || x === trigger);
+      const all = [...doc.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => (!me.has(x) || x === trigger) && drawnControl(x));
       // The trigger in the page's own tree, or the outermost shadow host around it.
       const ref = hosts[hosts.length - 1] ?? trigger;
       const to = k.shiftKey ? (trigger ?? before) : ref ? all.find((x) => x !== ref && !ref.contains(x) && ref.compareDocumentPosition(x) & 4) : before;

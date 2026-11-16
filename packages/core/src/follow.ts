@@ -14,12 +14,13 @@ import { boxOf, contextOf, docOf, framesUp, isElement, ownBox, rootFor, type Anc
 const STEPS = Array.from({ length: 101 }, (_, i) => i / 100);
 
 /**
- * The anchor left the page or is no longer drawn (`display: none` on it or around it, `visibility: hidden`); a virtual
+ * The anchor left the page (or its iframe did) or is no longer drawn (`display: none` on it or around it, `visibility: hidden`); a virtual
  * one (38): its element did, or its rectangle can no longer be read.
  */
 export const absent = (a: Anchor): boolean => {
   const c = contextOf(a);
-  if (c && (!c.isConnected || (typeof c.checkVisibility === 'function' && !c.checkVisibility({ visibilityProperty: true })))) return true;
+  // A document with no window: its iframe left the page (the element is still « connected » to that document, 34).
+  if (c && (!c.isConnected || !c.ownerDocument.defaultView || (typeof c.checkVisibility === 'function' && !c.checkVisibility({ visibilityProperty: true })))) return true;
   return !isElement(a) && !ownBox(a);
 };
 

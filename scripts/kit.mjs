@@ -33,7 +33,7 @@ const TYPES = {
   '.json': 'application/json',
 };
 
-async function handle(req, res, opts = {}) {
+export async function handle(req, res, opts = {}) {
   let path;
   try {
     path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));

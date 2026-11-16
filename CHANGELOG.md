@@ -84,10 +84,20 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
     Arabic; `--section=finished` runs it alone). Its review (fresh eyes on the new code): two modal popovers open at
     once no longer fight for the focus, closing one keeps the page shut for the other, a modal opened from inside a
     modal shuts its parent, a virtual rectangle whose getter throws no longer escapes, the focus given back to a hover
-    card's trigger no longer opens it again.
+    card's trigger no longer opens it again. A second review (2026-11-16, fresh eyes again;
+    `packages/core/test/review-finished.test.ts`): Tab from a static element given the focus (a heading with
+    `tabindex="-1"` as `initialFocus`) closed a non-modal popover and was taken from the browser in a modal one — now
+    the browser's own move whenever a control lies on the way; a control not drawn (`display: none` around it,
+    `visibility: hidden`) or inert is no longer a stop of a modal's wrap nor its first focus (Tab did nothing when the
+    first control was hidden); an iframe taken out of the page while its anchor's bubble showed above it left the
+    bubble on screen at the window's corner (an every-frame loop running on) — it now hides, the popover closes, `gone`. Cost: +0.07 kB gzipped (`popover` alone +0.06).
   - Sizes (minified, gzipped): `@dztooltip/core` 7.77 → 11.86 kB whole (`tooltip` alone 6.32 → 9.00, `popover` alone
     5.81 → 9.95); `@dztooltip/angular` 2.80 → 3.29 kB; the bridge 0.77 → 0.79 kB; the theme unchanged (3.07 kB).
 - `@dztooltip/gsap` dropped (owner 2026-11-16).
+- A test page (owner 2026-11-16, « je veux une page de test »; not published): `npm run playground`, port 4740 — one
+  section per capability with its code, light / dark, left to right / right to left, made-up content, a DzGrid 1.13.0
+  (npm, a devDependency) through the bridge; `scripts/playground-check.mjs` plays every section in a real browser (no
+  console error, axe 0).
 - The 1.0.0 review (fresh eyes on `packages/`; each defect a test that failed first,
   `packages/core/test/review-1-0-0.test.ts`):
   - **Placed by the viewport less its scrollbars**: a fixed bubble's room is the root's client size, not the window's —

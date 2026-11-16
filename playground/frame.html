@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr" dir="ltr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Cadre de démonstration</title>
+<link rel="stylesheet" href="/node_modules/@dzgrid/theme/dzgrid.css">
+<link rel="stylesheet" href="/packages/theme/dztooltip.css">
+<style>
+  html { color-scheme: var(--tz-color-scheme, light dark); }
+  body { margin: 0; padding: 0.75rem; font: 14px system-ui, sans-serif; background: var(--tz-bg-raised); color: var(--tz-fg); }
+  main { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  button { font: inherit; padding-block: 0.25rem; padding-inline: 0.75rem; border: 1px solid var(--tz-border); border-radius: 0.375rem; background: var(--tz-bg); color: var(--tz-fg); }
+  p { margin-block: 0 0.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <p>Dans l’iframe :</p>
+  <button type="button" id="with-root">Avec root</button>
+  <button type="button" id="without-root">Sans root</button>
+  <button type="button" id="frame-pop">Popover</button>
+</main>
+</body>
+</html>

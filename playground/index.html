@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr" dir="ltr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>DzTooltip — page de test</title>
+<!-- importmap -->
+<link rel="stylesheet" href="/node_modules/@dzgrid/theme/dzgrid.css">
+<link rel="stylesheet" href="/packages/theme/dztooltip.css">
+<link rel="stylesheet" href="./playground.css">
+</head>
+<body>
+<header class="top">
+  <h1>DzTooltip — page de test</h1>
+  <button type="button" id="theme" aria-pressed="false">Sombre</button>
+  <button type="button" id="dir" aria-pressed="false">De droite à gauche</button>
+</header>
+<nav class="toc" aria-label="Sections">
+  <ol id="toc"></ol>
+</nav>
+<main>
+  <section id="tons" aria-labelledby="tons-t">
+    <h2 id="tons-t">Tons</h2>
+    <p class="caption">Cinq tons, chacun lisible (contraste 4,5:1) en clair comme en sombre. Survolez ou tabulez.</p>
+    <div class="row" id="tones"></div>
+    <pre tabindex="0"><code data-code="tones"></code></pre>
+  </section>
+
+  <section id="placements" aria-labelledby="placements-t">
+    <h2 id="placements-t">Les 12 placements et « auto »</h2>
+    <p class="caption">Gauche et droite sont ceux de l’écran ; start et end ceux de la ligne (inversés de droite à gauche).</p>
+    <div class="places" id="places"></div>
+    <p class="caption">Glissez le bouton près des bords (ou faites défiler le cadre) : la bulle se retourne (flip) et glisse (shift) pour rester visible ; « attachée », elle ne quitte jamais son ancre.</p>
+    <div class="row">
+      <label>Placement <select id="drag-place"></select></label>
+      <label><input type="checkbox" id="drag-flip" checked> Retourner (flip)</label>
+      <label>Glisser (shift) <select id="drag-shift"><option value="true">oui</option><option value="attached">attachée</option><option value="false">non</option></select></label>
+      <button type="button" id="drag-open">Ouvrir la bulle</button>
+      <output id="drag-log" class="status"></output>
+    </div>
+    <div class="stage" id="stage" tabindex="0" role="group" aria-label="Cadre où glisser le bouton">
+      <div class="stage-inner"><button type="button" id="drag">Glissez-moi</button></div>
+    </div>
+    <pre tabindex="0"><code data-code="placements"></code></pre>
+  </section>
+
+  <section id="decalage" aria-labelledby="decalage-t">
+    <h2 id="decalage-t">Décalage (offset)</h2>
+    <p class="caption">L’écart entre l’ancre et la pointe de la flèche, et un glissement le long de l’autre axe.</p>
+    <div class="row">
+      <label>Écart <input type="range" id="off-main" min="-12" max="40" value="4"></label>
+      <label>Glissement <input type="range" id="off-cross" min="-80" max="80" value="0"></label>
+      <output id="off-out" class="status"></output>
+    </div>
+    <div class="row"><button type="button" id="off-anchor">Ancre décalée</button></div>
+    <pre tabindex="0"><code data-code="offset"></code></pre>
+  </section>
+
+  <section id="animations" aria-labelledby="animations-t">
+    <h2 id="animations-t">Animations et mouvement réduit</h2>
+    <p class="caption">Six préréglages CSS. Si le système demande moins de mouvement, aucune animation (ou un simple fondu avec <code>reducedMotion: 'fade'</code>).</p>
+    <div class="row" id="anims"></div>
+    <div class="row">
+      <label>Sous mouvement réduit <select id="reduced"><option value="none">aucune animation</option><option value="fade">un fondu</option></select></label>
+      <span class="status" id="reduced-now"></span>
+    </div>
+    <pre tabindex="0"><code data-code="animations"></code></pre>
+  </section>
+
+  <section id="formes" aria-labelledby="formes-t">
+    <h2 id="formes-t">Formes</h2>
+    <p class="caption">Trois formes toutes faites, et la forme d’une appli : un tracé SVG dans une boîte 100 × 100.</p>
+    <div class="row" id="shapes"></div>
+    <pre tabindex="0"><code data-code="shapes"></code></pre>
+  </section>
+
+  <section id="contenu" aria-labelledby="contenu-t">
+    <h2 id="contenu-t">Contenu riche</h2>
+    <p class="caption">Du texte, des nœuds, du HTML nettoyé. La chaîne hostile ci-dessous est neutralisée : ni script, ni image, ni lien <code>javascript:</code>.</p>
+    <div class="row" id="rich"></div>
+    <p class="status">HTML nettoyé : <code id="cleaned"></code></p>
+    <p class="status" id="pwned"></p>
+    <pre tabindex="0"><code data-code="rich"></code></pre>
+  </section>
+
+  <section id="popovers" aria-labelledby="popovers-t">
+    <h2 id="popovers-t">Popovers</h2>
+    <p class="caption">Un clic l’ouvre ; Échap, un clic dehors ou le bouton le referment. Le modal garde le focus à l’intérieur (Tab boucle) et rend le reste inerte. La carte s’ouvre au survol ou au focus clavier.</p>
+    <div class="row">
+      <button type="button" id="pop-click">Filtrer</button>
+      <button type="button" id="pop-modal">Modifier le contact</button>
+      <span>Auteur : <a href="#carte" id="pop-card">Ada Martin</a></span>
+    </div>
+    <p class="status" id="pop-log" aria-live="polite"></p>
+    <pre tabindex="0"><code data-code="popovers"></code></pre>
+  </section>
+
+  <section id="groupes" aria-labelledby="groupes-t">
+    <h2 id="groupes-t">Groupes de délai</h2>
+    <p class="caption">Le premier bouton attend son délai ; les suivants de la barre s’affichent aussitôt (et 300 ms encore après).</p>
+    <div class="toolbar" id="toolbar" role="toolbar" aria-label="Mise en forme"></div>
+    <pre tabindex="0"><code data-code="groups"></code></pre>
+  </section>
+
+  <section id="dialogue" aria-labelledby="dialogue-t">
+    <h2 id="dialogue-t">Dans un &lt;dialog&gt; natif</h2>
+    <p class="caption">Les bulles vont dans le dialogue ouvert : elles ne sont pas inertes, le popover prend le focus.</p>
+    <button type="button" id="dlg-open">Ouvrir le dialogue</button>
+    <dialog id="dlg" aria-labelledby="dlg-t">
+      <h3 id="dlg-t">Commande nº 42</h3>
+      <div class="row">
+        <button type="button" id="dlg-tip">Aide</button>
+        <button type="button" id="dlg-pop">Options</button>
+        <button type="button" id="dlg-close">Fermer</button>
+      </div>
+    </dialog>
+    <pre tabindex="0"><code data-code="dialog"></code></pre>
+  </section>
+
+  <section id="taille" aria-labelledby="taille-t">
+    <h2 id="taille-t">Taille limitée</h2>
+    <p class="caption">Un long popover ne dépasse jamais la place : son corps défile. Faites défiler pour amener le bouton en bas de l’écran.</p>
+    <button type="button" id="tall">Toutes les variétés</button>
+    <pre tabindex="0"><code data-code="size"></code></pre>
+  </section>
+
+  <section id="suivre" aria-labelledby="suivre-t">
+    <h2 id="suivre-t">Suivre l’ancre</h2>
+    <p class="caption">Une ancre qui change de taille ou de place : la bulle suit. Une ancre animée par une transformation : <code>everyFrame</code> la suit à chaque image ; sans, les observateurs la suivent en retard, ou pas du tout selon le navigateur.</p>
+    <div class="row">
+      <button type="button" id="grow" class="grow">Ancre</button>
+      <button type="button" id="grow-go">Agrandir / déplacer</button>
+    </div>
+    <div class="lane"><button type="button" class="runner" id="runner">En mouvement</button></div>
+    <div class="row">
+      <button type="button" id="run-every">Bulle avec everyFrame</button>
+      <button type="button" id="run-plain">Bulle sans</button>
+    </div>
+    <pre tabindex="0"><code data-code="follow"></code></pre>
+  </section>
+
+  <section id="virtuelles" aria-labelledby="virtuelles-t">
+    <h2 id="virtuelles-t">Ancres virtuelles</h2>
+    <p class="caption">La bulle suit le pointeur ; ou se place sur un texte sélectionné (un <code>Range</code>, sans élément).</p>
+    <div class="zones">
+      <div class="zone" id="cursor-both" tabindex="0" role="group" aria-label="Zone : suit le pointeur">Suit le pointeur</div>
+      <div class="zone" id="cursor-inline" tabindex="0" role="group" aria-label="Zone : suit le long de la ligne">Le long de la ligne</div>
+    </div>
+    <p id="selectable">Sélectionnez quelques mots de cette phrase : une bulle indique combien de caractères vous avez choisis, posée sur la sélection elle-même.</p>
+    <pre tabindex="0"><code data-code="virtual"></code></pre>
+  </section>
+
+  <section id="lien" aria-labelledby="lien-t">
+    <h2 id="lien-t">Lien sur plusieurs lignes</h2>
+    <p class="caption">La bulle se place sur le morceau de ligne survolé, pas sur la boîte qui les entoure tous.</p>
+    <p class="narrow">Le carnet de culture recommande de <a href="#lien" id="wrapped">consulter le calendrier des semis de la région avant toute plantation</a> au printemps.</p>
+    <pre tabindex="0"><code data-code="inline"></code></pre>
+  </section>
+
+  <section id="shadow" aria-labelledby="shadow-t">
+    <h2 id="shadow-t">Ancre dans un shadow DOM</h2>
+    <p class="caption">La bulle va en fin de page ; le lien ARIA traverse la frontière (réflexion d’éléments, ou <code>aria-description</code>).</p>
+    <dzt-demo-card id="card"></dzt-demo-card>
+    <pre tabindex="0"><code data-code="shadow"></code></pre>
+  </section>
+
+  <section id="iframe" aria-labelledby="iframe-t">
+    <h2 id="iframe-t">Ancre dans une iframe (même origine)</h2>
+    <p class="caption">Avec <code>root</code>, la bulle est faite dans la page au-dessus et posée par-dessus l’iframe ; sans, elle reste coincée dedans.</p>
+    <iframe id="frame" src="./frame.html" title="Cadre de démonstration"></iframe>
+    <pre tabindex="0"><code data-code="iframe"></code></pre>
+  </section>
+
+  <section id="grille" aria-labelledby="grille-t">
+    <h2 id="grille-t">Le pont DzGrid</h2>
+    <p class="caption">Une petite DzGrid (1.13.0) dont les bulles de cellules et d’en-têtes sont dessinées par DzTooltip.</p>
+    <div id="grid-host"></div>
+    <pre tabindex="0"><code data-code="grid"></code></pre>
+  </section>
+  <p class="status">Pas de section Angular ici : elle demanderait une compilation Angular de la page ; les directives sont vérifiées par les tests.</p>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

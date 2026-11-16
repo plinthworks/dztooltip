@@ -6,8 +6,20 @@
 /** What Tab stops on. */
 export const FOCUSABLE = ':is(a[href], button, input, select, textarea, summary, [contenteditable=true]):not([disabled], [type=hidden], [tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
 
-/** The controls Tab stops on inside `el`, its focus guards left out. */
-export const controlsIn = (el: Element): HTMLElement[] => [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => !x.hasAttribute('data-dzt-guard'));
+/** Can take the focus: drawn (where the browser can tell: not inside `display: none`, not `visibility: hidden`) and not inert. */
+export const drawnControl = (x: HTMLElement): boolean =>
+  !x.closest('[inert]') && (typeof x.checkVisibility !== 'function' || x.checkVisibility({ visibilityProperty: true }));
+
+/** The controls Tab stops on inside `el`, its focus guards and what cannot take the focus left out. */
+export const controlsIn = (el: Element): HTMLElement[] => [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => !x.hasAttribute('data-dzt-guard') && drawnControl(x));
+
+/**
+ * Whether Tab (or Shift+Tab) from `at` reaches one of `controls` on its own — one after it in the page's order
+ * (inside it too), or before it and not around it: the browser's move is then left alone. `at` need not be a control
+ * (a heading given the focus with `tabindex="-1"`, the bubble itself).
+ */
+export const tabStaysIn = (controls: readonly HTMLElement[], at: Element | null, back: boolean): boolean =>
+  !!at && controls.some((x) => x !== at && (back ? !!(at.compareDocumentPosition(x) & 2) && !x.contains(at) : !!(at.compareDocumentPosition(x) & 4)));
 
 /**
  * Where the focus goes when a popover opens (36): `initialFocus` — an element, a function given the bubble (its throw

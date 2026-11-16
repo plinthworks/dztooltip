@@ -136,6 +136,13 @@ theme the bubbles keep their layout and a plain look (system colours).
 
 Right to left is designed in: `start` / `end` follow the reading direction, `left` / `right` are the screen's.
 
+## Try it
+
+`npm run playground` in a clone serves a test page at http://localhost:4740/ — every capability in a section with its
+code (tones, placements, offset, animations, shapes, rich and cleaned content, popovers, modal, hover card, delay
+groups, a `<dialog>`, size, following, virtual anchors, a broken link, shadow DOM, an iframe, a DzGrid), light or
+dark, left to right or right to left. Made-up content.
+
 ## Licence
 
 MIT © Plinthworks. From 1.0.0 the public API follows semver; `@dztooltip/core/internal` is for this repository's own

@@ -268,7 +268,8 @@ pattern and from the HTML `inert` attribute and ARIA element reflection, in our 
     iframe no longer traps it. Followed while shown: a scroll or a resize in either document, the anchor's size. The
     two documents cannot share ids: the tooltip's words go in the anchor's `aria-description`; a popover's trigger
     keeps `aria-expanded`; presses outside are heard in both documents. A `root` that cannot be reached (another
-    origin, not up the frames) is ignored: the bubble stays in the anchor's document, as without it.
+    origin, not up the frames) is ignored: the bubble stays in the anchor's document, as without it. The iframe taken
+    out of the page while the bubble shows: the anchor is gone (28) — the tooltip hides, the popover closes.
 35. **The way to the bubble (safe triangle).** When the pointer leaves the anchor of a shown tooltip or hover card
     (40) towards the bubble, the bubble stays while the pointer is in the region between the point where it left and
     the bubble (the smallest shape holding that point and the bubble's box, a few pixels wider): a diagonal path to the
@@ -279,7 +280,9 @@ pattern and from the HTML `inert` attribute and ARIA element reflection, in our 
     bubble says `aria-modal="true"`; everything else in the page is made `inert` while it is open (the elements
     beside the path from the bubble to the page, other DzTooltip bubbles excepted; what the page had already made
     inert is left as it was), with `aria-hidden="true"` and two focus guards (empty focusable ends of the bubble that
-    send the focus back in) where a browser has no `inert`; Tab and Shift+Tab wrap inside it; a focus that lands
+    send the focus back in) where a browser has no `inert`; Tab and Shift+Tab wrap inside it (only over controls that
+    are drawn and not inert; from a static element given the focus, the browser's own move while a control lies on the
+    way — in any popover); a focus that lands
     outside is brought back; the focus leaving does not close it. Escape always closes it (anywhere in the page),
     a press outside too, and closing gives everything back before the focus returns. `initialFocus` says where the
     focus goes when it opens: an element, a function given the bubble that returns one, or `false` (none moved: the
@@ -307,7 +310,8 @@ pattern and from the HTML `inert` attribute and ARIA element reflection, in our 
     line only (the block from the anchor), `'block'` the other way; a keyboard focus places it by the anchor.
 39. **An animated anchor (every frame).** `everyFrame: true` (`dzTooltipEveryFrame`, `dzPopoverEveryFrame`, the bridge)
     checks the anchor's box at every frame while the bubble is on screen and places it again when it moved — for an
-    anchor moved by a CSS animation or a transform, which no observer sees. One box read per frame; placed only when
+    anchor moved by a CSS animation or a transform, which the observers see late or not at all (measured 2026-11-16:
+    Chrome follows a moving transform a step behind without it). One box read per frame; placed only when
     it changed; the frames stop when the bubble closes (nothing runs while it is closed).
 40. **A hover card.** `openOn: 'hover'` (`dzPopoverOpenOn="hover"`): a popover that opens when the pointer rests on its
     trigger (`delayMs`, 500 by default; never on touch alone) or at once on a keyboard focus, and goes when the pointer

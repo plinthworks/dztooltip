@@ -1,0 +1,109 @@
+/* The test page's own look (made-up content): the palette's variables only, logical sides only. */
+html {
+  color-scheme: var(--tz-color-scheme, light dark);
+  scroll-padding-block-start: 4rem;
+}
+body {
+  margin: 0;
+  font: 15px/1.5 system-ui, sans-serif;
+  background: var(--tz-bg);
+  color: var(--tz-fg);
+}
+header.top {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding-block: 0.6rem;
+  padding-inline: 1rem;
+  background: var(--tz-bg-raised);
+  border-block-end: 1px solid var(--tz-border);
+}
+header.top h1 { font-size: 1.1rem; margin: 0; margin-inline-end: auto; }
+nav.toc { padding-inline: 1rem; }
+nav.toc ol { columns: 14rem; padding-inline-start: 1.2rem; }
+nav.toc a { display: inline-block; min-block-size: 24px; }
+main { padding-inline: 1rem; padding-block-end: 40vh; max-inline-size: 72rem; margin-inline: auto; }
+section {
+  border: 1px solid var(--tz-border);
+  border-radius: 0.5rem;
+  padding: 0.25rem 1rem 1rem;
+  margin-block: 1.25rem;
+}
+section > h2 { font-size: 1.05rem; }
+.caption { color: var(--tz-fg-muted); margin-block: 0.25rem 0.75rem; }
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-block: 0.5rem; }
+button, select, input { font: inherit; }
+button {
+  min-block-size: 2rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--tz-border);
+  border-radius: 0.375rem;
+  background: var(--tz-bg);
+  color: var(--tz-fg);
+  cursor: pointer;
+}
+button[aria-pressed=true] { background: var(--tz-accent); color: var(--tz-accent-fg); border-color: var(--tz-accent); }
+:focus-visible { outline: 2px solid var(--tz-accent); outline-offset: 2px; }
+pre {
+  margin-block: 0.75rem 0;
+  padding: 0.6rem 0.8rem;
+  background: var(--tz-bg-raised);
+  border-radius: 0.375rem;
+  overflow: auto;
+  font-size: 13px;
+  /* Code reads left to right whatever the page's direction. */
+  direction: ltr;
+  text-align: start;
+}
+a { color: var(--tz-accent); }
+.places { display: grid; grid-template-columns: repeat(3, minmax(7.5rem, 1fr)); gap: 0.4rem; max-inline-size: 30rem; }
+.stage {
+  position: relative;
+  block-size: 260px;
+  overflow: auto;
+  border: 1px dashed var(--tz-border);
+  border-radius: 0.375rem;
+  margin-block: 0.5rem;
+}
+.stage-inner { position: relative; block-size: 520px; inline-size: 140%; }
+#drag { position: absolute; inset-block-start: 110px; inset-inline-start: 45%; touch-action: none; cursor: grab; }
+.status { font-size: 13px; color: var(--tz-fg-muted); }
+.ok { color: var(--tz-success); font-weight: 600; }
+.bad { color: var(--tz-danger); font-weight: 600; }
+.toolbar { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--tz-border); border-radius: 0.5rem; }
+.toolbar button { min-inline-size: 2.25rem; font-weight: 600; }
+.grow { transition: inline-size 0.6s, margin-inline-start 0.6s; inline-size: 8rem; }
+.grow.big { inline-size: 16rem; margin-inline-start: 6rem; }
+.lane { position: relative; block-size: 3rem; overflow: hidden; }
+.runner { position: absolute; inset-block-start: 0.4rem; animation: run 4s ease-in-out infinite alternate; }
+/* Towards the line's end in either direction. */
+.runner { --run: 22rem; }
+[dir=rtl] .runner { --run: -22rem; }
+@keyframes run { from { translate: 0 0; } to { translate: var(--run) 0; } }
+@media (prefers-reduced-motion: reduce) { .runner { animation-duration: 12s; } }
+.zone {
+  display: grid;
+  place-items: center;
+  block-size: 7rem;
+  border: 1px dashed var(--tz-border);
+  border-radius: 0.375rem;
+  color: var(--tz-fg-muted);
+}
+.zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.75rem; }
+.narrow { max-inline-size: 17rem; }
+iframe { inline-size: min(100%, 26rem); block-size: 5.5rem; border: 1px solid var(--tz-border); border-radius: 0.375rem; }
+#grid-host { block-size: 260px; display: flex; flex-direction: column; }
+dialog { border: 1px solid var(--tz-border); border-radius: 0.5rem; background: var(--tz-bg); color: var(--tz-fg); padding: 1rem 1.25rem; }
+dialog::backdrop { background: color-mix(in srgb, var(--tz-fg) 35%, transparent); }
+.bottom-pad { block-size: 1rem; }
+label { display: inline-flex; gap: 0.35rem; align-items: center; }
+.card-person { display: grid; gap: 0.25rem; max-inline-size: 16rem; }
+.card-person strong { font-size: 1rem; }
+.form { display: grid; gap: 0.5rem; min-inline-size: 15rem; }
+.form label { display: grid; gap: 0.15rem; }
+.long-list { margin: 0; padding-inline-start: 1.2rem; }
