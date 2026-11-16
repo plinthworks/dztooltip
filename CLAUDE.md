@@ -21,7 +21,7 @@ Never copy anything from `/Users/nadou/Dev/dz-grid-migration/`.
 - `packages/dzgrid` — `@dztooltip/dzgrid`: `dzTooltips(options)`, a DzGrid feature using DzGrid's tooltip seam
   (`FeatureHandle.tooltips`, DzGrid 1.12.0: its `docs/behaviors/tooltips.md` 13). Its types are structural (no import of
   DzGrid); `packages/dzgrid/test/fits-dzgrid.ts` checks they fit DzGrid's own.
-- `packages/gsap` — `@dztooltip/gsap`: not written yet (GSAP as a peer dependency, for apps that want it).
+- No `@dztooltip/gsap` package: dropped by the owner (2026-11-16, the morph abandoned); an app drives GSAP itself through the `animate` hook.
 - `docs/behaviors/tooltips-popovers.md` — the behaviour sheet (written before the code); `docs/plan/` — the plan.
 
 ## Commands
