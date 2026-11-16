@@ -268,3 +268,63 @@ it('1.0.0 (sheet 29, 30): dzTooltipGroup joins anchors of different containers; 
   q('.r2').click();
   expect(document.querySelector('.dzt-popover')!.parentElement).toBe(q('.layer'));
 });
+
+@Component({
+  selector: 't-finished',
+  imports: [DzTooltip, DzPopover],
+  template: `
+    <button class="o1" type="button" dzTooltip="Gap" [dzTooltipDelay]="0" [dzTooltipOffset]="10" [dzTooltipShift]="false" [dzTooltipEveryFrame]="true">Gap</button>
+    <div class="o2" dzTooltip="Here" [dzTooltipDelay]="0" dzTooltipFollowCursor="inline">Zone</div>
+    <a class="h1" href="#ada" [dzPopover]="'Ada, engineer'" dzPopoverOpenOn="hover" [dzPopoverDelay]="200" [dzPopoverHideDelay]="50">Ada</a>
+    <button class="m1" type="button" [dzPopover]="form" [dzPopoverModal]="true" [dzPopoverInitialFocus]="pick" [dzPopoverReturnFocus]="back" [dzPopoverOffset]="{ mainAxis: 12 }" dzPopoverShift="attached" [dzPopoverEveryFrame]="true">Modal</button>
+    <ng-template #form><button class="m-a" type="button">A</button><button class="m-b" type="button">B</button></ng-template>
+    <input class="back">
+  `,
+})
+class Finished {
+  readonly pick = (b: HTMLElement) => b.querySelector<HTMLElement>('.m-b');
+  back: HTMLElement | undefined;
+}
+
+it('1.0.0 (sheet 31, 32, 36, 38, 39, 40): offset, shift, every frame and following the cursor on dzTooltip; a hover card and a modal dzPopover', () => {
+  vi.useFakeTimers();
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+  const fixture = TestBed.createComponent(Finished);
+  document.body.appendChild(fixture.nativeElement);
+  const q = (s: string) => document.querySelector<HTMLElement>(s)!;
+  fixture.componentInstance.back = q('.back');
+  fixture.detectChanges();
+  TestBed.tick();
+  const bubble = () => document.querySelector<HTMLElement>('.dzt-tooltip.dzt-float')!;
+  // An anchor past the window's start edge (-50 to -10), the bubble with no size: centred at -30, not slid (shift false).
+  q('.o1').getBoundingClientRect = () => ({ left: -50, right: -10, top: 100, bottom: 120, width: 40, height: 20, x: -50, y: 100, toJSON: () => null });
+  q('.o1').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+  expect(bubble().style.getPropertyValue('inset-block-start')).toBe('130px');
+  expect(bubble().style.getPropertyValue('inset-inline-start')).toBe('-30px');
+  // Every frame while shown.
+  expect(frames.length).toBeGreaterThan(0);
+  q('.o2').getBoundingClientRect = () => ({ left: 0, right: 600, top: 400, bottom: 420, width: 600, height: 20, x: 0, y: 400, toJSON: () => null });
+  q('.o2').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', clientX: 222, clientY: 405 }));
+  // Along the line at the pointer, the block from the zone.
+  expect(bubble().style.getPropertyValue('inset-inline-start')).toBe('222px');
+  expect(bubble().style.getPropertyValue('inset-block-start')).toBe('424px');
+  // A hover card: its own delay, no focus moved.
+  q('.h1').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+  vi.advanceTimersByTime(199);
+  expect(document.querySelector('.dzt-popover')).toBeNull();
+  vi.advanceTimersByTime(1);
+  expect(document.querySelector('.dzt-popover')!.textContent).toBe('Ada, engineer');
+  expect(q('.h1').getAttribute('aria-expanded')).toBe('true');
+  // A modal one: its initial focus, the page hidden, its focus given back to the element asked.
+  q('.m1').click();
+  const modal = document.querySelector<HTMLElement>('.dzt-popover[aria-modal=true]')!;
+  expect(document.activeElement).toBe(modal.querySelector('.m-b'));
+  expect(fixture.nativeElement.getAttribute('aria-hidden')).toBe('true');
+  // Its gap: 12 px under the trigger (no size in jsdom: at 12).
+  expect(modal.style.getPropertyValue('inset-block-start')).toBe('12px');
+  document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  expect(document.activeElement).toBe(q('.back'));
+  expect(fixture.nativeElement.hasAttribute('aria-hidden')).toBe(false);
+  fixture.destroy();
+});

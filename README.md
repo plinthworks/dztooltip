@@ -38,11 +38,28 @@ more.destroy();
 - **A popover** is a non-modal dialog opened by a click (`openOn: 'manual'`: by code only). Escape (the focus back to
   the trigger), a press outside, Tab past its end, the trigger again or `close()` close it; `onClose(reason)` says why.
   Nested popovers stay open together; one open per `group` otherwise.
+- **A modal popover** (`modal: true`): the rest of the page is `inert` while it is open, Tab stays inside, Escape (from
+  anywhere) and a press outside close it, and the focus goes back to the trigger. `initialFocus` (an element, a
+  function given the bubble, or `false`) and `returnFocus` (`true`, an element, or `false`) say where the focus goes.
+- **A hover card** (`openOn: 'hover'`): a popover opened by the pointer resting on its trigger (`delayMs`, 500) or a
+  keyboard focus, closed when the pointer leaves both (`hideDelayMs`, 150) or on Escape. It moves no focus; Tab from the
+  trigger goes into it. Put in it only what the trigger already offers another way (a link's preview, a person's
+  details): touch and screen reader users may never open it.
+- **The way to the bubble**: moving from the anchor to a shown tooltip or hover card, even diagonally to its far corner,
+  does not close it (a safe triangle).
 - **Placement**: `top`, `bottom`, `start`, `end` (the line's: mirrored in right to left), `left`, `right` (the screen's),
   each with `-start` / `-end`, or `auto` (the side with the most room). Not fitting, it moves to the opposite side, then
   across (`flip: false`: never). Never bigger than the room: its content scrolls. It follows its anchor while shown and
-  goes with it. In the top layer: no `overflow` or transform around the anchor clips it; inside a modal `<dialog>` it
-  goes in the dialog (`root` to choose).
+  goes with it (`everyFrame: true` also follows an anchor moved by an animation or a transform). In the top layer: no
+  `overflow` or transform around the anchor clips it; inside a modal `<dialog>` it goes in the dialog (`root` to
+  choose). `offset`: the gap (4 px by default), or `{ mainAxis, crossAxis, alignmentAxis }`, or a function of the side
+  and the sizes. `shift`: `true` (kept in the window), `'attached'` (never off its anchor), `false`. A link broken over
+  lines gets its bubble on the line hovered (the first one from the keyboard).
+- **Anchors**: an element — inside a shadow root too (described through ARIA element reflection, or `aria-description`)
+  or inside a same-origin iframe (`root: parent.document.body` puts the bubble in the page, over the iframe) — or a
+  virtual anchor, any object with `getBoundingClientRect()` and an optional `contextElement` (a point, a chart's mark, a
+  text selection's `Range` as it is), shown by code. `followCursor` (`true`, `'inline'`, `'block'`) places a tooltip by
+  the pointer and moves it along.
 - **Content**: words; a `Node`; `{ html }`, cleaned by `safeHtml` (an allowlist rebuilt from an inert document: no
   script, no event attribute, no `style`, no URL, no SVG or MathML survives); or a function called at each opening,
   which may return `{ node, gone }` (`gone()` when the content goes).
@@ -52,8 +69,9 @@ more.destroy();
 - **Your own animation**: `animate(el, 'open' | 'close', info)` — a closing waits for what it returns (a promise, a WAAPI
   `animation.finished`, a GSAP tween or timeline).
 - **A strict CSP**: one `<style>` is added per document for the layout; pass `nonce`.
-- **Bad input never throws**: a non-element anchor is reported (`reportError`, `dztooltip: not-an-element`) and gets a
-  handle that does nothing. Messages never carry your content.
+- **Bad input never throws**: an anchor that is neither an element nor a virtual anchor is reported (`reportError`,
+  `dztooltip: not-an-element`) and gets a handle that does nothing; a virtual anchor whose rectangle cannot be read is
+  reported once (`dztooltip: not-a-rect`) and shows nothing. Messages never carry your content.
 
 ## Angular
 
@@ -72,7 +90,9 @@ import { DzTooltip, DzPopover } from '@dztooltip/angular';
 
 `[dzTooltip]` and `[dzPopover]` take words, an `<ng-template>` (its `let-` value is `…Context`), a component class (its
 inputs `…Inputs`) or `{ html }` (Angular's sanitizer, then `safeHtml`). Every option above is an input (`dzTooltipTone`,
-`dzPopoverPlacement`, `dzTooltipGroup`, `dzPopoverRoot`…); `isOpen()` is a signal; `opened` and `closed` are outputs.
+`dzPopoverPlacement`, `dzTooltipGroup`, `dzPopoverRoot`, `dzTooltipOffset`, `dzTooltipShift`, `dzTooltipEveryFrame`,
+`dzTooltipFollowCursor`, `dzPopoverModal`, `dzPopoverInitialFocus`, `dzPopoverReturnFocus`, `dzPopoverOpenOn="hover"`,
+`dzPopoverDelay`, `dzPopoverHideDelay`…); `isOpen()` is a signal; `opened` and `closed` are outputs.
 Nothing runs on the server.
 
 ## DzGrid

@@ -8,7 +8,7 @@ import {
   afterNextRender, createComponent, effect, inject, input, signal, untracked, type Type,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { tooltip, type TipAnimate, type TipAnimation, type TipContent, type TipTone, type TooltipHandle, type TooltipPlacement } from '@dztooltip/core';
+import { tooltip, type TipAnimate, type TipAnimation, type TipContent, type TipLook, type TipTone, type TooltipHandle, type TooltipPlacement } from '@dztooltip/core';
 
 /** What `[dzTooltip]` (and `[dzPopover]`) show: words, a template, a component class, or HTML (opt-in, cleaned twice). */
 export type DzTipContent = string | TemplateRef<any> | Type<unknown> | { readonly html: string } | null | undefined;
@@ -96,6 +96,14 @@ export class DzTooltip {
   readonly dzTooltipGroup = input<string | false>();
   /** Where the bubble goes in the page (sheet 30). @default the anchor's open `<dialog>`, or the page's end */
   readonly dzTooltipRoot = input<HTMLElement>();
+  /** The gap (px) and a slide of the app's, or a function of the side and the sizes (sheet 31). @default 4 */
+  readonly dzTooltipOffset = input<TipLook['offset']>();
+  /** Slid to stay in the window: `true`, `'attached'` (never off its anchor), `false` (sheet 32). @default true */
+  readonly dzTooltipShift = input<boolean | 'attached'>();
+  /** The anchor's box checked at every frame while shown: an animated anchor (sheet 39). @default false */
+  readonly dzTooltipEveryFrame = input<boolean>();
+  /** Placed by the pointer and moved with it: `true`, `'inline'`, `'block'` (sheet 38). @default false */
+  readonly dzTooltipFollowCursor = input<boolean | 'inline' | 'block'>();
   #handle: TooltipHandle | null = null;
 
   constructor() {
@@ -110,7 +118,7 @@ export class DzTooltip {
       const o = {
         content: what == null || typeof what === 'string' ? (what ?? '') : ɵdzDraw(what, () => untracked(this.dzTooltipContext), () => untracked(this.dzTooltipInputs), () => this.hide(), ng),
         disabled: this.dzTooltipDisabled() || what == null || what === '',
-        ...ɵdefined({ placement: this.dzTooltipPlacement(), flip: this.dzTooltipFlip(), shape: this.dzTooltipShape(), reducedMotion: this.dzTooltipReducedMotion(), tone: this.dzTooltipTone(), animation: this.dzTooltipAnimation(), animate: this.dzTooltipAnimate(), delayMs: this.dzTooltipDelay(), style: this.dzTooltipStyle(), maxWidth: this.dzTooltipMaxWidth(), when: this.dzTooltipWhen(), group: this.dzTooltipGroup(), root: this.dzTooltipRoot() }),
+        ...ɵdefined({ placement: this.dzTooltipPlacement(), flip: this.dzTooltipFlip(), shape: this.dzTooltipShape(), reducedMotion: this.dzTooltipReducedMotion(), tone: this.dzTooltipTone(), animation: this.dzTooltipAnimation(), animate: this.dzTooltipAnimate(), delayMs: this.dzTooltipDelay(), style: this.dzTooltipStyle(), maxWidth: this.dzTooltipMaxWidth(), when: this.dzTooltipWhen(), group: this.dzTooltipGroup(), root: this.dzTooltipRoot(), offset: this.dzTooltipOffset(), shift: this.dzTooltipShift(), everyFrame: this.dzTooltipEveryFrame(), followCursor: this.dzTooltipFollowCursor() }),
       };
       untracked(() => (this.#handle ? this.#handle.update(o) : (this.#handle = tooltip(el, o))));
     });
@@ -138,4 +146,4 @@ export function ɵdefined<T extends object>(o: T): { [K in keyof T]?: Exclude<T[
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as never;
 }
 
-export type { TipAnimate, TipAnimation, TipTone, TooltipPlacement };
+export type { TipAnimate, TipAnimation, TipLook, TipTone, TooltipPlacement };

@@ -2,6 +2,11 @@
 
 2026-11-15 · question du propriétaire : « on est à combien pour avoir une tooltip digne de Floating UI ? »
 
+**Mise à jour 2026-11-16, suite** (propriétaire : « je veux que tu finisses la lib bien comme il faut ») — les 6
+partiels et les 4 absents restants sont comblés : lignes 3, 5, 10, 11, 17, 21, 22, 27, 28, 32 (feuille
+`tooltips-popovers.md` 31–40), chacune avec sa vérification permanente (`scripts/browser.mjs`, section 13 « finished »,
+Chrome, Firefox, WebKit, clair et sombre, français et arabe). **Score : 35 / 35.**
+
 **Mise à jour 2026-11-16** (propriétaire : « ★ partout ») — les six manques du §2 sont comblés avant 1.0.0 : lignes 4,
 7, 8, 9, 13, 15, 16, 24, 25, 33 passées au niveau (feuille `tooltips-popovers.md` 25–30). Chaque page de preuve est
 devenue une vérification permanente (`scripts/browser.mjs`, section 12 « hard cases »), verte en Chrome, Firefox et
@@ -28,15 +33,15 @@ une appli comme celle du propriétaire (une grille de données, des boutons, des
 |---|---|---|---|---|---|---|---|
 | 1 | Où la bulle s'ouvre : 4 côtés × 3 alignements | `placement` (12) | `dir.ts:placementOf`, `bubble.ts:place` — 12 placements + `auto` | ✅ | suite existante (`float-place.test.ts`) ; toutes les mesures ci-dessous centrées à 0 px | — | — |
 | 2 | Droite à gauche | côtés `left/right` + `rtl` dans la plateforme | `start`/`end` logiques, `left`/`right` de l'écran, flèche et glissement miroir (`dir.ts`) | ✅ (mieux) | suite existante (`browser.mjs` en arabe) | — | — |
-| 3 | L'écart bulle–ancre | `offset` (axe principal, transversal, alignement ; fonction) | fixe : 4 px + la marge de la flèche (`place`, `g = 4 + m`) ; pas d'option | 🟡 | écart mesuré **10 px** partout ; aucune option dans `TipLook` | S | moyenne |
+| 3 | L'écart bulle–ancre | `offset` (axe principal, transversal, alignement ; fonction) | option `offset` : nombre (l'écart, 4 px par défaut), `{ mainAxis, crossAxis, alignmentAxis }` (logique : miroir en arabe), ou fonction du côté essayé et des tailles (feuille 31) | ✅ | 2026-11-16 : `offset: 12` → **8 px de plus** que le défaut ; `crossAxis: 20` → **+20 px** vers la fin de la ligne (−20 à l'écran en arabe), 3 moteurs | — | — |
 | 4 | Changer de côté quand ça ne rentre pas | `flip` (fallbackPlacements, crossAxis, bestFit, padding, boundary) | côté demandé, puis l'opposé, puis les deux côtés en travers ; ne rentre nulle part : là où on en voit le plus (`place`, feuille 26) | ✅ | 2026-11-16 : popover de 524 px à mi-hauteur → **à droite, entier** (`data-side=inline-end`), 3 moteurs | — | — |
-| 5 | Glisser pour rester dans l'écran | `shift` (padding, `limitShift`) | ✓ dans la fenêtre, à `--dzt-viewport-padding` des bords (8 px avec le thème) ; pas de `limitShift` | 🟡 | écart au bord réglable depuis 2026-11-16 (`float-place.test.ts`) ; `limitShift` absent | S | basse |
+| 5 | Glisser pour rester dans l'écran | `shift` (padding, `limitShift`) | ✓ dans la fenêtre, à `--dzt-viewport-padding` des bords ; `shift: 'attached'` (comme `limitShift`) : glisse sans jamais quitter l'ancre ; `false` : jamais (feuille 32) | ✅ | 2026-11-16 : bouton à moitié hors de la fenêtre : par défaut bulle **dans la fenêtre** ; `'attached'` : **≥ 20 px** de bulle le long de l'ancre, la flèche dessus, 3 moteurs | — | — |
 | 6 | La flèche qui vise l'ancre | `arrow` (élément, padding) | `--dzt-tip-at`, 12 px des coins, suit le flip, dessinée par le thème | ✅ | suite existante | — | — |
 | 7 | Limiter la taille à la place disponible | `size` (`availableHeight/Width`, `apply`) | `--dzt-available-block-size` / `-inline-size` écrits à chaque placement ; le corps du popover défile, l'infobulle trop haute aussi (`data-overflow`) | ✅ | 2026-11-16 : popover de 1 500 px sous un bouton à y = 406 : **dans la fenêtre à 8 px des bords**, son dernier champ atteint en faisant défiler, 3 moteurs | — | — |
 | 8 | Choisir seul le côté qui a le plus de place | `autoPlacement` | `placement: 'auto'` explicite : parmi les côtés où elle rentre, celui qui laisse le plus de place (sans placement : en dessous, comme avant) | ✅ | 2026-11-16 : bulle de 320 px près du bord de début à mi-hauteur → au bout de la ligne ; sans `auto` → en dessous, 3 moteurs | — | — |
 | 9 | Cacher la bulle quand l'ancre est cachée / partie | `hide` (`referenceHidden`, `escaped`) | infobulle et popover : partis à la frame suivante quand l'ancre quitte la page ou n'est plus dessinée (`display: none`, `visibility: hidden`) ; popover : aussi hors d'une boîte qui défile | ✅ | 2026-11-16 : `a.remove()` puis parent en `display: none` pendant l'affichage → **bulle cachée**, 3 moteurs | — | — |
-| 10 | Lien sur plusieurs lignes | `inline` (choisit le bon fragment) | absent : le rectangle englobant (`getBoundingClientRect`) | ❌ | lien coupé : fragment 1 à x = 323–339, bulle `top` centrée sur l'englobant à x = 198–241, **≈ 110 px à côté** du fragment visé | S–M | basse |
-| 11 | Ancre « virtuelle » : le curseur, une sélection de texte | virtual elements, `useClientPoint` | absent : `tooltip()` / `popover()` exigent un `HTMLElement` | ❌ | `tooltip({ getBoundingClientRect })` **lève** `TypeError: Invalid value used as weak map key` (3 moteurs) — contraire à la règle « une mauvaise entrée ne lève jamais » | M | moyenne (curseur sur une cellule, un graphique) |
+| 10 | Lien sur plusieurs lignes | `inline` (choisit le bon fragment) | le morceau de ligne survolé ou cliqué (le plus proche du pointeur), le premier au clavier ; morceaux d'une même ligne réunis ; automatique (feuille 37) | ✅ | 2026-11-16 : lien sur 2 lignes, pointeur sur la 2e : bulle **centrée sur ce morceau à ≤ 1,5 px** (avant : ≈ 110 px à côté), 3 moteurs | — | — |
+| 11 | Ancre « virtuelle » : le curseur, une sélection de texte | virtual elements, `useClientPoint` | `tooltip()` / `popover()` prennent `{ getBoundingClientRect(), getClientRects?(), contextElement? }` (un `Range` tel quel) ; `followCursor` (`true`, `'inline'`, `'block'`) ; un rectangle illisible : signalé une fois, jamais d'exception (feuille 38) | ✅ | 2026-11-16 : un point → bulle **centrée à ≤ 1 px** ; une sélection de texte → popover **centré à ≤ 1,5 px**, nommé ; curseur suivi le long d'une zone **à ≤ 1,5 px**, 3 moteurs | — | — |
 
 ### Suivre l'ancre (autoUpdate)
 
@@ -47,7 +52,7 @@ une appli comme celle du propriétaire (une grille de données, des boutons, des
 | 14 | La bulle change de taille | elementResize (flottant) | `ResizeObserver` sur le popover | ✅ | suite existante | — | — |
 | 15 | L'ancre change de taille | elementResize (référence) | `ResizeObserver` sur l'ancre et la bulle pendant l'affichage | ✅ | 2026-11-16 : bouton grandi de 26 → 64 px : le popover **ne recouvre plus l'ancre**, 3 moteurs | — | — |
 | 16 | L'ancre bouge sans défilement (mise en page) | layoutShift (IntersectionObserver) | un `IntersectionObserver` ajusté à la boîte de l'ancre, réajusté après chaque placement ; une frame au plus, rien quand c'est fermé | ✅ | 2026-11-16 : voisin élargi de 250 px, popover ouvert : **centré à ≤ 1,5 px**, 3 moteurs ; aucune mise en page en plus pendant l'ouverture `morph` (Chrome, compteur de layouts) | — | — |
-| 17 | Suivre une ancre animée | `animationFrame: true` | pas de mode « chaque frame » ; l'`IntersectionObserver` de la ligne 16 voit l'ancre bouger, non mesuré pour une animation | ❌ | non mesuré | S | basse |
+| 17 | Suivre une ancre animée | `animationFrame: true` | `everyFrame: true` : la boîte de l'ancre lue à chaque frame pendant l'affichage, replacée seulement si elle a bougé, arrêté à la fermeture (feuille 39) | ✅ | 2026-11-16 : bouton déplacé par une animation `transform` de 300 × 80 px : **écart ≤ 1,5 px** sur ≥ 10 frames, 3 moteurs | — | — |
 
 ### Plateforme
 
@@ -56,8 +61,8 @@ une appli comme celle du propriétaire (une grille de données, des boutons, des
 | 18 | Stratégie `fixed` / `absolute` | `strategy` | `fixed` + couche du dessus, sans choix (`FLOAT_CSS`, `reveal`) | ✅ | la couche du dessus rend `absolute` inutile ; replacée à la frame qui suit le défilement (ligne 12) — décalage d'une frame non mesuré | — | — |
 | 19 | Parent `transform` / `filter` / `contain` / `will-change` | détection des blocs conteneurs | la bulle n'est jamais dans ce parent (fin de `body`, couche du dessus) | ✅ | ancre dans un parent avec les quatre : écart 10 px, centrage 0 px, `:popover-open` vrai (3 moteurs) | — | — |
 | 20 | Ancêtre qui rogne (`overflow: hidden`) | `boundary` / clipping ancestors | couche du dessus : jamais rognée | ✅ | même parent (`overflow: hidden`, 60 px de haut) : bulle de 320 × 47 entièrement visible, au-dessus de tout | — | — |
-| 21 | Ancre dans un shadow root | plateforme compatible shadow DOM | placement ✓ ; **`aria-describedby` vise un id hors du shadow root** | 🟡 | placement juste (écart 10 px) ; arbre d'accessibilité de Chrome : description **vide** pour l'ancre dans l'ombre, « Description normale » pour l'ancre témoin | M | basse (DzGrid n'utilise pas de shadow DOM) |
-| 22 | Ancre dans une iframe | référence dans l'iframe, bulle dans la page parente | la bulle vit dans le document de l'iframe : enfermée dedans | 🟡 | iframe de 300 × 150 : bulle de 300 px (toute l'iframe), retournée en haut ; ne peut pas en sortir | L | basse |
+| 21 | Ancre dans un shadow root | plateforme compatible shadow DOM | placement ✓ ; description par réflexion d'éléments ARIA (`ariaDescribedByElements`), sinon `aria-description` ; popover : `ariaControlsElements`, nommé par les mots du déclencheur, un clic dessus n'est plus « dehors » (feuille 33) | ✅ | 2026-11-16 : arbre d'accessibilité de Chrome : **description « Description dans l'ombre »** (avant : vide) ; Firefox, WebKit : réflexion ou `aria-description` ; popover ouvert et refermé par deux clics, 3 moteurs | — | — |
+| 22 | Ancre dans une iframe | référence dans l'iframe, bulle dans la page parente | `root` peut être un élément de la page au-dessus (même origine) : la bulle y est créée, posée sur l'iframe (bordure et marge comptées), suivie au défilement des deux documents (feuille 34) | ✅ | 2026-11-16 : iframe de 300 × 150 : bulle de 380 px **dans la page, débordant de l'iframe, centrée à ≤ 1,5 px** ; popover suivi au défilement de l'iframe (**30 px**), 3 moteurs | — | — |
 | 23 | Couche du dessus / Popover API | doc : `FloatingPortal`, top layer | `popover="manual"` + `showPopover()` (`bubble.ts:reveal`) | ✅ | `:popover-open` vrai partout | — | — |
 | 24 | Bulle ouverte depuis un `<dialog>` modal | portail dans le dialogue (`FloatingPortal root`) | la bulle va dans le `dialog[open]` de son ancre (toujours dans la couche du dessus) | ✅ | 2026-11-16 : popover depuis un dialogue modal : **son champ prend le clic et la frappe** (`elementFromPoint` → le champ) ; infobulle : **reste avec le pointeur dessus**, 3 moteurs | — | — |
 | 25 | Choisir où la bulle est insérée | `FloatingPortal root` | option `root` (`tooltip()`, `popover()`, `[dzTooltipRoot]`, `[dzPopoverRoot]`) | ✅ | `follow.test.ts`, test Angular | — | — |
@@ -67,26 +72,39 @@ une appli comme celle du propriétaire (une grille de données, des boutons, des
 | # | Ce que c'est | Floating UI | DzTooltip aujourd'hui | Verdict | Preuve | Effort | Priorité |
 |---|---|---|---|---|---|---|---|
 | 26 | Survol avec délai, délai de fermeture | `useHover` (`delay`, `restMs`) | `delayMs` 500, `hideDelayMs` 150, jamais au toucher seul (`tooltip.ts`) | ✅ | témoin : du bouton vers la bulle sans pause, la bulle reste | — | — |
-| 27 | Triangle de sécurité vers une bulle interactive | `safePolygon` | seulement 150 ms de grâce | 🟡 | trajet en diagonale de ~300 ms hors du bouton et hors de la bulle vers son coin lointain : **bulle fermée** à l'arrivée (3 moteurs) | M | basse (une infobulle n'est pas interactive ; utile pour la ligne 28) |
-| 28 | Popover ouvert au survol (« hover card ») | `useHover` + `safePolygon` sur un popover | absent : `openOn: 'click' \| 'manual'` | ❌ | type `PopoverOptions.openOn` | M | basse–moyenne |
+| 27 | Triangle de sécurité vers une bulle interactive | `safePolygon` | la plus petite forme contenant le point de sortie et la bulle : la bulle reste tant que le pointeur y est (sortie de la forme, de la fenêtre, ou 400 ms immobile : sa grâce) ; infobulles et « hover cards » (feuille 35) | ✅ | 2026-11-16 : trajet en diagonale de ~400 ms vers le coin lointain, plus de la moitié hors du bouton et de la bulle : **bulle gardée** ; trajet à l'opposé : **fermée**, 3 moteurs | — | — |
+| 28 | Popover ouvert au survol (« hover card ») | `useHover` + `safePolygon` sur un popover | `openOn: 'hover'` : survol (`delayMs` 500) ou focus clavier, aucun focus déplacé, Tab y entre, fermé quand le pointeur quitte les deux (`hideDelayMs` 150, triangle de sécurité), Échap, clic dehors (feuille 40) | ✅ | 2026-11-16 : ouvert par la souris (focus inchangé), gardé en y allant, fermé en s'éloignant ; au clavier : ouvert au focus, Tab dedans, Échap → focus sur le lien, 3 moteurs | — | — |
 | 29 | Focus clavier ouvre, clic non | `useFocus` (`visibleOnly`) | `keyed()` : focus suivant une touche → tout de suite | ✅ | suite existante | — | — |
 | 30 | Fermer : Échap, clic dehors, défilement, focus qui part | `useDismiss` | les quatre, popovers imbriqués compris | ✅ | suite existante ; ligne 12 | — | — |
 | 31 | Rôles ARIA | `useRole` (tooltip, dialog, menu, listbox, select…) | `tooltip` + `aria-describedby`, `dialog` non modal + `aria-haspopup/expanded/controls` | ✅ | suite existante + axe (menus, listes : hors périmètre, voulu) | — | — |
-| 32 | Gestion du focus | `FloatingFocusManager` (initialFocus, returnFocus, modal, guards) | `autofocus` / premier contrôle, retour au déclencheur, ordre de Tab comme après le déclencheur ; **pas de mode modal** | 🟡 | type `PopoverOptions` (pas de `modal`) | M | basse |
+| 32 | Gestion du focus | `FloatingFocusManager` (initialFocus, returnFocus, modal, guards) | `modal: true` : `aria-modal`, reste de la page `inert` (sinon `aria-hidden` + gardes de focus), Tab enfermé, Échap partout ; `initialFocus`, `returnFocus` ; deux modales : seule la plus récente garde le focus (feuille 36) | ✅ | 2026-11-16 : page `inert`, 6 Tab restent dedans, axe propre, Échap → page rendue puis focus sur le déclencheur, 3 moteurs | — | — |
 | 33 | Groupe de délais (barre d'outils) | `FloatingDelayGroup` | automatique : même parent (ou `group: 'nom'`, `false` pour aucun) — la suivante tout de suite, à la place de la première, et 300 ms après la fermeture ; boutons d'en-tête d'une grille (pont) : un groupe ; cellules de la grille : le délai de DzGrid | ✅ | 2026-11-16 : 3 boutons collés, « Deux » affiché **< 250 ms** après le départ du pointeur (trajet compris), 3 moteurs | — | — |
 | 34 | Animations d'entrée / sortie | `useTransitionStyles`, `useTransitionStatus` | presets CSS, `morph`, crochet `animate`, fermeture attendue | ✅ (mieux) | suite existante | — | — |
 | 35 | Bulles imbriquées | `FloatingTree` | popover dans un popover garde son parent, Échap ferme le plus profond | ✅ | suite existante | — | — |
 
 ## 1. Score
 
-**25 sur 35 au niveau** (2026-11-16 ; avant : 15), 6 partiels, 4 absents — environ **28 / 35** en comptant un partiel
-pour moitié (avant : 20). Restent absents : `inline` (10), l'ancre virtuelle (11, refusée proprement depuis 2026-11-16 —
-plus tard, propriétaire B), le suivi d'une ancre animée (17, non mesuré), la « hover card » (28).
+**35 sur 35 au niveau** (2026-11-16, fin ; avant : 25, et 15 au départ). Ce qui reste, honnêtement — des limites de
+principe, pas des lignes manquantes :
 
-Pour l'essentiel d'une appli (placer, flèche, couche du dessus, clavier, fermeture, accessibilité de base, droite à
-gauche), DzTooltip est **au niveau ou mieux**. Il est **en retard** sur ce qui rend Floating UI robuste dans les cas durs :
-la taille disponible, le choix du côté, le suivi de l'ancre quand la page bouge sans défiler, les modales natives, les
-ancres virtuelles.
+- **Iframe** (22) : même origine seulement (une autre origine ne se lit pas : le `root` est alors ignoré, la bulle reste
+  dans l'iframe) ; les deux documents ne partagent pas d'id, l'ancre reçoit les mots en `aria-description` ; le
+  déplacement de l'ancre sans défilement (ligne 16) n'est pas surveillé à travers le cadre (défilements, tailles et
+  `everyFrame` le sont) ; non vérifié avec un document de droite à gauche *dans* l'iframe (barre de défilement à
+  gauche).
+- **Shadow DOM** (21) : là où le navigateur n'a pas la réflexion d'éléments ARIA, la description passe par
+  `aria-description` (ARIA 1.3) et `aria-controls` n'est pas dit ; les feuilles du thème doivent atteindre la page (la
+  bulle reste à la fin de la page, pas dans le shadow root).
+- **Triangle de sécurité** (27) : pour les infobulles de la page et les « hover cards » ; les infobulles d'une grille
+  (pont) gardent les règles de DzGrid. Traverser une autre ancre en chemin (une cellule) affiche son infobulle — une
+  à la fois, comme voulu.
+- **Hover card** (28) : un complément, jamais le seul accès à une information (toucher, lecteurs d'écran).
+- **Poids** : le cœur passe de 7,77 à 11,86 kB (gzip, tout), `tooltip` seul de 6,32 à 9,00 kB, `popover` seul de 5,81 à
+  9,95 kB.
+
+Sur les 35 lignes, DzTooltip est **au niveau ou mieux**. (Avant le 2026-11-16 il était en retard sur les cas durs : la
+taille disponible, le choix du côté, le suivi de l'ancre, les modales natives, les ancres virtuelles ; les §2 et §5
+ci-dessous sont gardés pour mémoire.)
 
 ## 2. Les manques qui comptent, classés
 

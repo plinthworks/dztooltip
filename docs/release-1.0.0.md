@@ -38,3 +38,8 @@ Un code expiré en route : relancer avec un nouveau code.
 
 Revue indépendante de `packages/` (défauts corrigés, chacun par un test rouge d'abord : `CHANGELOG.md`) ; `build`,
 tests unitaires, matrice navigateurs (Chrome, Firefox, WebKit), `release:check`, ton appli (`npm run check`).
+
+Puis « finis la lib bien comme il faut » : les 10 dernières lignes de l'audit (feuille 31–40 : `offset`, `shift:
+'attached'`, shadow DOM, iframe, triangle de sécurité, popover modal, lien sur plusieurs lignes, ancres virtuelles et
+curseur suivi, `everyFrame`, « hover card ») — **35 / 35** (`docs/audit-floating-ui.md`), relues à part (défauts
+corrigés par un test rouge d'abord), et la même vérification complète refaite.

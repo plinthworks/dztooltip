@@ -8,5 +8,6 @@ export { tooltip, type TooltipHandle, type TooltipOptions } from './tooltip.js';
 export { popover, type PopoverCloseReason, type PopoverHandle, type PopoverOptions } from './popover.js';
 export { safeHtml } from './html.js';
 export type { TipContent } from './float.js';
-export type { TipAnimate, TipAnimateInfo, TipLook, TipThenable } from './bubble.js';
-export type { TipAnimation, TipSide, TipTone, TooltipPlacement } from './types.js';
+export type { TipAnimate, TipAnimateInfo, TipLook, TipOffset, TipOffsetState, TipThenable } from './bubble.js';
+export type { VirtualAnchor, VirtualRect } from './anchor.js';
+export type { TipAlign, TipAnimation, TipSide, TipTone, TooltipPlacement } from './types.js';

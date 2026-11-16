@@ -2,6 +2,10 @@ import { Tooltip, type TipLook, type TipTone } from './bubble.js';
 import { enhance } from './engine.js';
 import { dirAt, drawn, floatStyles, keyed, pageOf, schemeOf, wanted, type TipContent } from './float.js';
 import { isAnchor } from './follow.js';
+import { boxOf, contextOf, docOf, isElement, pointed, rootFor, type Anchor, type VirtualAnchor } from './anchor.js';
+import { pointOf, type Pt } from './dir.js';
+import { safeZone } from './safe.js';
+import { Ears } from './write.js';
 
 /** Its text cut (an ellipsis): wider than its box, itself or a box in it (an inline one has no box: client width 0). */
 export const cutText = (el: Element): boolean => (el.clientWidth > 0 && el.scrollWidth > el.clientWidth) || [...el.children].some(cutText);
@@ -24,8 +28,16 @@ export interface TooltipOptions extends TipLook {
    * @default the anchor's parent (the buttons of one toolbar)
    */
   readonly group?: string | false;
-  /** Where the bubble goes in the page (30). @default the anchor's open `<dialog>`, or the page's end */
+  /**
+   * Where the bubble goes in the page (30); an element of the page above an iframe holding the anchor puts it there,
+   * over the iframe (34). @default the anchor's open `<dialog>`, or the page's end
+   */
   readonly root?: HTMLElement;
+  /**
+   * Placed by the pointer's point over the anchor and moved with it (38): `true` both ways, `'inline'` along the line
+   * only, `'block'` the other way. A keyboard focus places it by the anchor. @default false
+   */
+  readonly followCursor?: boolean | 'inline' | 'block';
 }
 
 export interface TooltipHandle {
@@ -41,11 +53,13 @@ export interface TooltipHandle {
 /** One bubble per document: one tooltip on screen at a time (3). */
 const bubbles = new WeakMap<Document, Tooltip>();
 /** The anchor whose show waits for its delay, per document (18). */
-const waits = new WeakMap<Document, HTMLElement>();
+const waits = new WeakMap<Document, Anchor>();
 /** Each anchor's delay group (29): a name, its parent, or none. */
 const groups = new WeakMap<Element, () => unknown>();
+/** The way to the shown bubble kept, per document (35): ended by any show (the pointer reached another anchor). */
+const zones = new WeakMap<Document, () => void>();
 /** The tooltip on screen, or the one that hid less than 300 ms ago, is in the same group as `el` (29). */
-const warm = (t: Tooltip | undefined, el: HTMLElement): boolean => {
+const warm = (t: Tooltip | undefined, el: Element): boolean => {
   const k = groups.get(el)?.();
   const was = t && (t.anchor && !t.el.hidden ? t.anchor : t.recent);
   return k != null && !!was && groups.get(was)?.() === k;
@@ -82,60 +96,110 @@ function bubbleOf(doc: Document, nonce: string | undefined): Tooltip {
 }
 
 /**
- * Gives `el` a tooltip: after `delayMs` on hover (never on touch alone), at once on a keyboard focus; the pointer may
- * move onto it; Escape, a press, a scroll or the pointer leaving hide it. `aria-describedby` on `el` while shown.
+ * Gives `anchor` a tooltip: after `delayMs` on hover (never on touch alone), at once on a keyboard focus; the pointer
+ * may move onto it, on the way the safe triangle keeps it (35); Escape, a press, a scroll or the pointer leaving hide
+ * it. `aria-describedby` on the anchor while shown (across a shadow root or a frame: 33, 34). A virtual anchor (38) has
+ * no events: shown and hidden by code.
  */
-export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle {
-  // Not an element (a virtual anchor): reported, a handle that does nothing (28).
-  if (!isAnchor(el, 'tooltip(el)')) return { show() {}, hide() {}, update() {}, shown: false, destroy() {} };
-  const doc = el.ownerDocument;
+export function tooltip(anchor: HTMLElement | VirtualAnchor, options: TooltipOptions): TooltipHandle {
+  // Neither an element nor a virtual anchor: reported, a handle that does nothing (28).
+  if (!isAnchor(anchor, 'tooltip(el)')) return { show() {}, hide() {}, update() {}, shown: false, destroy() {} };
+  const el = isElement(anchor) ? (anchor as HTMLElement) : null;
+  const ctx = contextOf(anchor);
+  const doc = docOf(anchor)!;
   let o = options;
   const page = pageOf(doc);
-  const ac = new AbortController();
-  const on = (t: EventTarget, type: string, fn: (e: Event) => void, capture = false): void => t.addEventListener(type, fn, { signal: ac.signal, capture, passive: true });
-  const tip = (): Tooltip => bubbleOf(doc, o.nonce);
-  const mine = (): boolean => bubbles.get(doc)?.anchor === el;
-  groups.set(el, () => (o.group === false ? null : o.group ?? el.parentElement));
+  const ears = new Ears();
+  const on = (t: EventTarget, type: string, fn: (e: Event) => void, capture = false): void => ears.on(t, type, fn, { capture, passive: true });
+  /** The bubble's document: the anchor's, or the page's above it that `root` names (34). */
+  const home = (): Document => rootFor(ctx, o.root, doc).ownerDocument;
+  const tip = (): Tooltip => bubbleOf(home(), o.nonce);
+  const mine = (): boolean => bubbles.get(home())?.current === anchor;
+  if (el) groups.set(el, () => (o.group === false ? null : o.group ?? el.parentElement));
   /** Destroyed: shows nothing more. */
   let dead = false;
   /** The look this anchor gave the page's bubble at its last show: taken back at destroy (it holds the app's content). */
   let lent: (() => TooltipOptions) | null = null;
+  /** The pointer's last point over the anchor (37, 38): none after a keyboard focus. */
+  let point: Pt | null = null;
+  let frame = 0;
+  const endZone = (): void => {
+    const h = home();
+    zones.get(h)?.();
+    zones.delete(h);
+  };
   const show = (delay: number): void => {
     // An open popover's trigger shows none (tooltips-popovers.md 14).
-    if (dead || o.disabled || el.matches('[aria-haspopup][aria-expanded=true]') || (o.when === 'truncated' && !cutText(el))) return;
+    if (dead || o.disabled || (el && (el.matches('[aria-haspopup][aria-expanded=true]') || (o.when === 'truncated' && !cutText(el))))) return;
+    endZone();
     const t = tip();
+    // Escape heard in the bubble's document too (an iframe's anchor, its bubble above, 34).
+    const p = pageOf(t.el.ownerDocument);
+    if (!pages.has(p)) pages.add(p), p.escape.add(escape);
     const look = o;
     t.look = lent = () => look;
     const c = drawn(look.content, doc);
     if (!c.text && !c.node) return void c.gone?.();
     // Its words read in the anchor's direction, and its logical place measured in it.
-    const d = dirAt(el);
+    const d = ctx ? dirAt(ctx) : t.el.ownerDocument.dir === 'rtl' ? 'rtl' : 'ltr';
     t.el.dir = d;
-    schemeOf(t.el, el);
-    waits.set(doc, el);
+    if (ctx) schemeOf(t.el, ctx);
+    waits.set(doc, anchor);
     // Its group warm: at once, in place of the one shown (29).
-    if (delay > 0 && warm(t, el)) delay = 0;
-    t.showFor(el, { text: c.text, node: c.node, ...(c.gone && { gone: c.gone }), tone: look.tone, root: look.root }, d, delay);
+    if (el && delay > 0 && warm(t, el)) delay = 0;
+    // By the pointer's point (followed), or by the piece of the anchor it is on (37).
+    const f = look.followCursor;
+    const by = el && point ? pointed(el, () => point, f === true ? 'both' : f === 'inline' || f === 'block' ? f : 'piece') : undefined;
+    t.showFor(anchor, { text: c.text, node: c.node, ...(c.gone && { gone: c.gone }), tone: look.tone, root: look.root, by }, d, delay);
   };
   // A show waiting for this anchor dropped too (tooltips-popovers.md 18).
   const hide = (): void => {
-    if (waits.get(doc) === el) bubbles.get(doc)?.drop();
-    if (mine()) bubbles.get(doc)!.hide();
+    endZone();
+    const h = home();
+    if (waits.get(doc) === anchor) bubbles.get(h)?.drop();
+    if (mine()) bubbles.get(h)!.hide();
   };
-  on(el, 'pointerenter', (e) => void ((e as PointerEvent).pointerType !== 'touch' && show(o.delayMs ?? 500)));
-  on(el, 'pointerleave', (e) => {
-    const t = bubbles.get(doc);
-    if (t && !t.el.contains((e as PointerEvent).relatedTarget as Node | null)) t.hideSoon();
-  });
-  on(el, 'focusin', () => void (keyed(doc) && show(0)));
-  on(el, 'focusout', hide);
-  on(el, 'pointerdown', hide);
-  on(el, 'click', hide);
+  if (el) {
+    const at = (e: Event): void => void (point = pointOf(e as PointerEvent));
+    on(el, 'pointerenter', (e) => {
+      if ((e as PointerEvent).pointerType === 'touch') return;
+      at(e);
+      show(o.delayMs ?? 500);
+    });
+    // The point followed (38): placed again at most once a frame.
+    on(el, 'pointermove', (e) => {
+      if ((e as PointerEvent).pointerType === 'touch') return;
+      at(e);
+      const win = doc.defaultView;
+      if (!o.followCursor || !mine() || frame || !win) return;
+      frame = win.requestAnimationFrame(() => void ((frame = 0), mine() && tip().replace()));
+    });
+    on(el, 'pointerleave', (e) => {
+      const t = bubbles.get(home());
+      const p = e as PointerEvent;
+      if (!t || t.el.contains(p.relatedTarget as Node | null)) return;
+      // Shown: the way to the bubble kept (35), then its grace; else its grace now.
+      endZone();
+      if (mine() && !t.el.hidden && !o.followCursor) {
+        const h = t.el.ownerDocument;
+        // Its end may come at once (no way to the bubble's screen): told after it is kept.
+        let stop: (() => void) | null = null;
+        const out = (): void => void (zones.get(h) === stop && zones.delete(h), mine() && t.hideSoon());
+        stop = safeZone(pointOf(p), doc, t.el, () => boxOf(el, h), out);
+        zones.set(h, stop);
+      } else t.hideSoon();
+    });
+    on(el, 'focusin', () => void (keyed(doc) && ((point = null), show(0))));
+    on(el, 'focusout', hide);
+    on(el, 'pointerdown', hide);
+    on(el, 'click', hide);
+  }
   on(doc, 'scroll', hide, true);
   const escape = (): void => hide();
+  const pages = new Set([page]);
   page.escape.add(escape);
   return {
-    show: () => show(0),
+    show: () => ((point = null), show(0)),
     hide,
     update(n) {
       o = { ...o, ...n };
@@ -143,22 +207,23 @@ export function tooltip(el: HTMLElement, options: TooltipOptions): TooltipHandle
       else if (mine()) show(0);
     },
     get shown() {
-      return mine() && !bubbles.get(doc)!.el.hidden;
+      return mine() && !bubbles.get(home())!.el.hidden;
     },
     destroy() {
       hide();
       dead = true;
-      ac.abort();
-      page.escape.delete(escape);
-      groups.delete(el);
+      ears.off();
+      if (frame) doc.defaultView?.cancelAnimationFrame(frame);
+      for (const p of pages) p.escape.delete(escape);
+      if (el) groups.delete(el);
       // Nothing of a destroyed anchor kept by the page's bubble: not the anchor, not its options (an app's template or
       // component and the view that made it).
-      if (waits.get(doc) === el) waits.delete(doc);
-      const t = bubbles.get(doc);
+      if (waits.get(doc) === anchor) waits.delete(doc);
+      const t = bubbles.get(home());
       if (t && lent && t.look === lent) t.look = () => ({});
       lent = null;
     },
   };
 }
 
-export type { TipContent, TipTone };
+export type { TipContent, TipTone, VirtualAnchor };

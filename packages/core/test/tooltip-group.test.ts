@@ -48,14 +48,16 @@ describe('delay groups (29)', () => {
     enter(one!);
     vi.advanceTimersByTime(500);
     leave(one!);
-    // The 150 ms grace, then hidden.
-    vi.advanceTimersByTime(150);
+    // The way to the bubble kept while the pointer rests (35: 400 ms), then the 150 ms grace, then hidden.
+    vi.advanceTimersByTime(400 + 149);
+    expect(on()).toBe('One!');
+    vi.advanceTimersByTime(1);
     expect(on()).toBeNull();
     vi.advanceTimersByTime(299);
     enter(two!);
     expect(on()).toBe('Two!');
     leave(two!);
-    vi.advanceTimersByTime(150 + 300);
+    vi.advanceTimersByTime(400 + 150 + 300);
     enter(three!);
     expect(on()).toBeNull();
     vi.advanceTimersByTime(500);

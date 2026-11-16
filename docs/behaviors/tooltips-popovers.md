@@ -217,11 +217,10 @@ FloatingPortal), in our words; `docs/audit-floating-ui.md` holds the evidence pa
     when it closes.
 28. **The anchor gone.** Checked at the same frames: a tooltip whose anchor left the page or is no longer drawn
     (`display: none` on it or around it, `visibility: hidden`) hides — the page's with its closing, a grid's through the
-    grid's own hide; a popover closes (`gone`), now also when its trigger is no longer drawn. An anchor that is not an
-    element (a virtual one: a rectangle, a cursor — later, owner B) is refused without throwing: `tooltip()` and
-    `popover()` give back a handle that does nothing and report one error (`reportError`, a `TypeError` whose message
-    starts `dztooltip: not-an-element` and names the argument, `tooltip(el)` or `popover(trigger)` — nothing of the
-    value itself).
+    grid's own hide; a popover closes (`gone`), now also when its trigger is no longer drawn. An anchor that is neither an
+    element nor a virtual anchor (38) is refused without throwing: `tooltip()` and `popover()` give back a handle that
+    does nothing and report one error (`reportError`, a `TypeError` whose message starts `dztooltip: not-an-element`
+    and names the argument, `tooltip(el)` or `popover(trigger)` — nothing of the value itself).
 29. **Delay groups (a toolbar).** A tooltip on screen makes its group warm: resting on another anchor of the same group
     shows that one's tooltip at once, in place of the first (it jumps, 7: no closing and opening between) — while a
     tooltip of the group is on screen, and for 300 ms after it hid. The group (owner A, automatic): the anchor's parent by
@@ -234,6 +233,90 @@ FloatingPortal), in our words; `docs/audit-floating-ui.md` holds the evidence pa
     fields take clicks and the focus, a tooltip can be hovered. It is still shown in the top layer, above the dialog.
     `root: element` (`tooltip()`, `popover()`, `[dzTooltipRoot]`, `[dzPopoverRoot]`) puts it in that element instead (an
     app's own modal layer).
+
+### Finished (owner 2026-11-16, « je veux que tu finisses la lib bien comme il faut »: every partial and missing row of the audit)
+Behaviour from Floating UI's public documentation only (offset, shift and limitShift, inline, virtual elements,
+useClientPoint, autoUpdate's animationFrame, safePolygon, FloatingFocusManager, useHover), from WAI-ARIA's dialog
+pattern and from the HTML `inert` attribute and ARIA element reflection, in our words.
+
+31. **The gap and a slide of the app's (offset).** `offset` on `tooltip()`, `popover()`, the bridge and the directives
+    (`dzTooltipOffset`, `dzPopoverOffset`): a number is the gap between the anchor and the tip of the arrow (4 px when
+    none is given, as before; negative: the bubble overlaps its anchor); an object `{ mainAxis, crossAxis,
+    alignmentAxis }` adds a slide along the other axis — `crossAxis` towards the line's end (a bubble above or below)
+    or towards the block's end (a bubble at the start or the end), so right to left mirrors it; `alignmentAxis`, only
+    for an aligned placement (`-start`, `-end`), replaces `crossAxis` and slides inwards from the edge it is aligned
+    on. A function is asked at each placement, for each side tried, with `{ side, align, anchor, bubble }` (sizes as
+    `inlineSize`, `blockSize`) and answers a number or the object. A value that is not a finite number counts as
+    none; a function that throws is reported and counts as none. The room (25) and the side chosen (26) use the gap.
+32. **Sliding, and how far (shift).** `shift: true` (the default, as before) slides the bubble along the other axis to
+    keep it in the window; `shift: 'attached'` slides it too but never so far that it leaves its anchor: at least 12
+    px of the bubble past its corner stays beside the anchor, so the arrow still points at it — near a window's edge
+    with the anchor half off screen, the bubble follows the anchor out rather than detach from it; `shift: false`
+    never slides (aligned as asked, even past the window's edge). The arrow keeps pointing at the anchor's middle,
+    held 12 px from the bubble's corners.
+33. **An anchor inside a shadow root.** The bubble still goes to the page's end (the page's stylesheets reach it),
+    and what links them crosses the shadow boundary: a tooltip describes its anchor through ARIA element reflection
+    (`ariaDescribedByElements`, the anchor's own descriptions kept) where the browser has it and the bubble's tree is
+    an ancestor of the anchor's; otherwise its words are the anchor's `aria-description` while it shows. A popover's
+    trigger gets `ariaControlsElements` the same way (nothing where it is missing: `aria-expanded` still says it);
+    the popover is named by its `label`, or by the trigger's `aria-label` or words (an id cannot reach into the
+    shadow root). A press on the trigger inside the shadow root is not « outside », and Tab past the popover's end
+    goes on after the shadow host. Nothing is added or left behind once it closes.
+34. **An anchor inside an iframe.** `root` may be an element of another document of the same origin up the frames
+    (the page holding the iframe: `root: parent.document.body`): the bubble is then made in that document and placed
+    over the iframe, by the anchor's box moved by each frame's place (its border and padding counted), so a small
+    iframe no longer traps it. Followed while shown: a scroll or a resize in either document, the anchor's size. The
+    two documents cannot share ids: the tooltip's words go in the anchor's `aria-description`; a popover's trigger
+    keeps `aria-expanded`; presses outside are heard in both documents. A `root` that cannot be reached (another
+    origin, not up the frames) is ignored: the bubble stays in the anchor's document, as without it.
+35. **The way to the bubble (safe triangle).** When the pointer leaves the anchor of a shown tooltip or hover card
+    (40) towards the bubble, the bubble stays while the pointer is in the region between the point where it left and
+    the bubble (the smallest shape holding that point and the bubble's box, a few pixels wider): a diagonal path to the
+    bubble's far corner no longer closes it. It goes (after its grace, `hideDelayMs`) when the pointer leaves that
+    region, leaves the window, or rests in it without reaching the bubble for 400 ms; reaching the bubble or the
+    anchor ends the region (the usual rules hold there). Nothing is listened to once it ends.
+36. **A modal popover (focus management).** `modal: true` (`dzPopoverModal`) makes the popover a modal dialog: the
+    bubble says `aria-modal="true"`; everything else in the page is made `inert` while it is open (the elements
+    beside the path from the bubble to the page, other DzTooltip bubbles excepted; what the page had already made
+    inert is left as it was), with `aria-hidden="true"` and two focus guards (empty focusable ends of the bubble that
+    send the focus back in) where a browser has no `inert`; Tab and Shift+Tab wrap inside it; a focus that lands
+    outside is brought back; the focus leaving does not close it. Escape always closes it (anywhere in the page),
+    a press outside too, and closing gives everything back before the focus returns. `initialFocus` says where the
+    focus goes when it opens: an element, a function given the bubble that returns one, or `false` (none moved: the
+    focus stays where it was — for a modal, the bubble itself takes it); by default the element marked `autofocus`,
+    else the first control, else (modal) the bubble. `returnFocus` says where it goes back: `true` (the default) the
+    trigger — for a non-modal popover only when it closes by Escape, the trigger or code with the focus inside, as
+    before; for a modal one on every close —, an element instead of the trigger, or `false` (never moved). Not modal
+    (the default): as before. A hover card (40) is never modal.
+37. **A link broken over lines (inline).** An anchor whose box breaks over lines (an inline link, a text selection)
+    is placed by one of its line pieces, not by the box around them all: the piece under the pointer that opened it
+    (hover, a click), else the nearest to it; opened by the keyboard or by code, the first piece (the line where it
+    starts). Pieces on one line count as one. An anchor in one piece is placed as before.
+38. **Virtual anchors.** `tooltip()` and `popover()` take, besides an element, any object with a
+    `getBoundingClientRect()` (a rectangle in the window: a cursor's point, a chart's mark, a `Range` of selected
+    text as it is) and an optional `contextElement` (the element it belongs to: its document, its dialog, its
+    direction and scheme, and « gone » when it leaves the page; a `Range`'s own container when none is given); with a
+    `getClientRects()` its pieces count (37). It has no events: shown and hidden by code (`show()`, `hide()`;
+    `open()`, `close()`); Escape, a scroll (tooltip), a press outside (popover) and the rules of 27 and 28 still hold;
+    a rectangle that changes is followed when `everyFrame` (39) is set, or placed again by `show()` / `reposition()`.
+    No element is described by a virtual tooltip, no trigger carries a virtual popover's ARIA (its `label` names it);
+    a virtual popover gives the focus back to the element that had it before it opened. A `getBoundingClientRect` that
+    throws or answers something that is not a rectangle is reported and the bubble is hidden, never a throw. **Following
+    the cursor** (`followCursor`, `dzTooltipFollowCursor`): a tooltip placed by the pointer's point over its anchor
+    rather than the anchor's box, moved with the pointer at most once a frame — `true` both ways, `'inline'` along the
+    line only (the block from the anchor), `'block'` the other way; a keyboard focus places it by the anchor.
+39. **An animated anchor (every frame).** `everyFrame: true` (`dzTooltipEveryFrame`, `dzPopoverEveryFrame`, the bridge)
+    checks the anchor's box at every frame while the bubble is on screen and places it again when it moved — for an
+    anchor moved by a CSS animation or a transform, which no observer sees. One box read per frame; placed only when
+    it changed; the frames stop when the bubble closes (nothing runs while it is closed).
+40. **A hover card.** `openOn: 'hover'` (`dzPopoverOpenOn="hover"`): a popover that opens when the pointer rests on its
+    trigger (`delayMs`, 500 by default; never on touch alone) or at once on a keyboard focus, and goes when the pointer
+    leaves the trigger and the card (`hideDelayMs`, 150 by default; the safe triangle 35 between them; not while the
+    focus is inside it), on Escape, a press outside, or the focus leaving both. Opening it moves no focus (the trigger
+    keeps it); Tab from the trigger goes into the card's first control, and on past its end as for any popover. A click
+    on the trigger is its own (a link follows it): it does not toggle the card. Its close reason when the pointer
+    leaves is `leave`. The pattern, documented: the card adds to what the trigger already says and does (a link's
+    preview, a person's details) — nothing only it holds, since touch and screen reader users may never open it.
 
 ## What DzGrid does
 - **One implementation, the weight opt-in** (owner Q-T1 B, 2026-11-14): the base (`render/tooltip.ts`) places (one
@@ -299,4 +382,7 @@ ARIA, group and nesting, scroll and recycling), `safe-html.test.ts` (hand-writte
 HTML, a component and a template, axe). Since the move (DzTooltip): `packages/core/test/float-place.test.ts` (25, 26:
 the room, the padding, the fallbacks, `auto`), `follow.test.ts` (27, 28, 30), `tooltip-group.test.ts` (29),
 `packages/dzgrid/test/tooltip-robust-grid.test.ts` (27–29 in a grid); browser: `scripts/browser.mjs` section 12, « the
-hard cases » (25–30, the audit's evidence pages).
+hard cases » (25–30, the audit's evidence pages). Finished (31–40): `packages/core/test/finish-place.test.ts` (offset,
+shift, an iframe's anchor, line pieces, virtual anchors, the followed cursor, every frame), `finish-interact.test.ts`
+(shadow roots, the safe triangle, modal popovers, hover cards, the review's defects), the Angular inputs in
+`tooltip-directives.test.ts`; browser: `scripts/browser.mjs` section 13, « finished » (`--section=finished`).

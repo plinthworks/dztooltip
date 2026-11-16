@@ -4,10 +4,11 @@
  * packages/core/test/browser/tips.html, its grid a DzGrid from the checkout beside this one (`../dzgrid`, served under
  * /dzgrid/) drawn through the bridge, `dzTooltips({ header: true, html: true })`. The matrix: Chrome, Firefox, WebKit ×
  * layered and unlayered sheets × light and dark × French and Arabic × without and with Tailwind 3's preflight. One
- * browser at a time, closed in finally. `--only=chrome` runs one browser; `--first` one run per browser.
+ * browser at a time, closed in finally. `--only=chrome` runs one browser; `--first` one run per browser;
+ * `--section=finished` only section 13 (sheet 31–40).
  *
- * Run here since 2026-11-16 (the hard cases, section 12, the audit's evidence pages: once per browser, scheme and
- * direction). The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
+ * Run here since 2026-11-16 (the hard cases, section 12, and the finished rows, section 13 — the audit's evidence
+ * pages: once per browser, scheme and direction). The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
  */
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -21,6 +22,8 @@ const AXE = (() => {
   }
 })();
 const results = [];
+/** `--section=finished`: only the last rows of the audit (sheet 31–40), for a quick look while working on them. */
+const section = process.argv.find((a) => a.startsWith('--section='))?.slice(10);
 const check = (label, ok, detail) => {
   results.push(!!ok);
   if (!ok || process.env.VERBOSE) console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}  ${ok ? '' : JSON.stringify(detail ?? null).slice(0, 900)}`);
@@ -937,14 +940,337 @@ async function robustChecks(page, tag) {
     window.addEventListener('error', seen);
     let threw = false;
     try {
-      window.tooltip({ getBoundingClientRect: () => new DOMRect(10, 10, 10, 10) }, { content: 'x' }).show();
+      // Neither an element nor a virtual anchor (no getBoundingClientRect; a virtual one is accepted since sheet 38).
+      window.tooltip({ left: 10, top: 10 }, { content: 'x' }).show();
     } catch {
       threw = true;
     }
     window.removeEventListener('error', seen);
     return { told, threw };
   });
-  check(`${tag}: (28) a virtual anchor: refused without a throw, reported once`, !virtual.threw && virtual.told === 1, virtual);
+  check(`${tag}: (28) an anchor that is neither an element nor a virtual one: refused without a throw, reported once`, !virtual.threw && virtual.told === 1, virtual);
+  await clean();
+  await settle();
+}
+
+/**
+ * (13) « Finished » (owner 2026-11-16, « je veux que tu finisses la lib bien comme il faut »; sheet 31–40): the audit's
+ * last partial and missing rows as permanent checks — an offset's gap and slide (31); `shift: 'attached'` by an anchor
+ * half off screen (32); a tooltip in a shadow root described (Chrome's accessibility tree; elsewhere the reflection or
+ * the description) and a popover's trigger there not « outside » (33); an iframe's anchor with its bubble over the
+ * iframe, followed when the iframe scrolls (34); the diagonal way to a far bubble (35); a modal popover: inert outside,
+ * Tab kept inside, Escape and the focus back, axe clean (36); a link broken over lines (37); a virtual point, a text
+ * selection, a followed cursor (38); an anchor moved by an animation (39); a hover card by the mouse and the keyboard (40).
+ */
+async function finishedChecks(page, tag, name) {
+  const settle = () => page.waitForTimeout(350);
+  const W = 900, H = 700;
+  const rtl = tag.includes(' ar');
+  const clean = () => page.evaluate(() => {
+    for (const h of window.tips.values()) h.destroy();
+    for (const h of window.pops.values()) h.destroy();
+    window.tips.clear();
+    window.pops.clear();
+    document.getElementById('finished')?.remove();
+    const r = document.createElement('div');
+    r.id = 'finished';
+    document.body.append(r);
+  });
+  const B = '.dzt-tooltip.dzt-float:not(.dzg *)';
+  const mid = (r) => [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
+
+  // (31) The gap: 12 px asked against the default 4 (the arrow's margin the same); a slide of 20 px towards the line's end.
+  await clean();
+  const off = await page.evaluate((B) => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Écart' });
+    b.style.cssText = 'position: fixed; inset-block-start: 200px; inset-inline-start: 400px';
+    document.getElementById('finished').append(b);
+    const at = (o) => {
+      window.tips.get('off')?.destroy();
+      const t = window.tooltip(b, { content: 'Un écart', delayMs: 0, animation: 'none', ...o });
+      window.tips.set('off', t);
+      t.show();
+      const r = document.querySelector(B).getBoundingClientRect();
+      const a = b.getBoundingClientRect();
+      return { gap: r.top - a.bottom, slide: (r.left + r.right) / 2 - (a.left + a.right) / 2 };
+    };
+    return { base: at({}), gap: at({ offset: 12 }), slide: at({ offset: { crossAxis: 20 } }) };
+  }, B);
+  check(`${tag}: (31) offset: a 12 px gap is 8 px more than the default; a 20 px slide towards the line's end`, Math.abs(off.gap.gap - off.base.gap - 8) <= 1 && Math.abs(off.slide.slide - (rtl ? -20 : 20)) <= 1 && Math.abs(off.base.slide) <= 1, off);
+
+  // (32) An anchor half past the line's end: the default slides the bubble into the window, off its anchor; attached keeps it on.
+  await clean();
+  const att = await page.evaluate((B) => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Bord' });
+    b.style.cssText = 'position: fixed; inset-block-start: 300px; inset-inline-end: -40px; inline-size: 60px';
+    document.getElementById('finished').append(b);
+    const words = 'Une bulle assez large pour devoir glisser au bord de la fenêtre.';
+    const at = (shift) => {
+      window.tips.get('att')?.destroy();
+      const t = window.tooltip(b, { content: words, maxWidth: 300, delayMs: 0, animation: 'none', ...(shift && { shift }) });
+      window.tips.set('att', t);
+      t.show();
+      const r = document.querySelector(B).getBoundingClientRect();
+      const a = b.getBoundingClientRect();
+      return { overlap: Math.min(r.right, a.right) - Math.max(r.left, a.left), inWindow: r.left >= 7 && r.right <= innerWidth - 7 };
+    };
+    return { free: at(), attached: at('attached') };
+  }, B);
+  check(`${tag}: (32) shift: by default kept in the window; 'attached' never off its anchor (the arrow on it)`, att.free.inWindow && att.attached.overlap >= 19, att);
+
+  // (33) A tooltip in a shadow root: described (Chrome's accessibility tree; elsewhere the reflection or the
+  // description); a popover's trigger there: a press on it is not outside, aria-controls reaches the bubble.
+  await clean();
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.id = 'shost';
+    host.style.cssText = 'position: fixed; inset-block-start: 120px; inset-inline-start: 120px';
+    document.getElementById('finished').append(host);
+    const root = host.attachShadow({ mode: 'open' });
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Ombre' });
+    const p = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Filtre' });
+    root.append(b, ' ', p);
+    const t = window.tooltip(b, { content: 'Description dans l’ombre', delayMs: 0, animation: 'none' });
+    window.tips.set('shadow', t);
+    window.pops.set('shadow', window.popover(p, { content: () => window.form(), animation: 'none' }));
+    t.show();
+  });
+  let described;
+  if (name === 'chrome') {
+    const cdp = await page.context().newCDPSession(page);
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    described = nodes.find((n) => n.name?.value === 'Ombre' && n.role?.value === 'button')?.description?.value ?? null;
+    await cdp.detach();
+  } else {
+    described = await page.evaluate(() => {
+      const b = document.getElementById('shost').shadowRoot.querySelector('button');
+      const tip = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)');
+      return b.ariaDescribedByElements?.includes(tip) ? tip.textContent : b.getAttribute('aria-description');
+    });
+  }
+  check(`${tag}: (33) a tooltip in a shadow root: the anchor described ("${described}")`, described === 'Description dans l’ombre', described);
+  const pAt = await page.evaluate(() => { window.tips.get('shadow').hide(); const r = document.getElementById('shost').shadowRoot.querySelectorAll('button')[1].getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2]; });
+  await page.mouse.click(...pAt);
+  const sp = await page.evaluate(() => {
+    const h = window.pops.get('shadow');
+    const p = document.getElementById('shost').shadowRoot.querySelectorAll('button')[1];
+    return { open: h.isOpen, controls: 'ariaControlsElements' in p ? p.ariaControlsElements?.[0] === h.el : 'none', label: h.el?.getAttribute('aria-label') };
+  });
+  await page.mouse.click(...pAt);
+  const spClosed = await page.evaluate(() => !window.pops.get('shadow').isOpen);
+  check(`${tag}: (33) a popover's trigger in a shadow root: opened by a click, named, controls its bubble; a second click closes it`, sp.open && sp.controls !== false && sp.label === 'Filtre' && spClosed, { sp, spClosed });
+
+  // (34) An anchor in a small iframe: its bubble in the page, over the iframe, centred on the anchor; followed when the
+  // iframe's content scrolls.
+  await clean();
+  const fr = await page.evaluate(async () => {
+    const f = document.createElement('iframe');
+    f.style.cssText = 'position: fixed; inset-block-start: 380px; inset-inline-start: 200px; inline-size: 300px; block-size: 150px; border: 3px solid; padding: 5px';
+    f.srcdoc = '<!doctype html><body style="margin:0;block-size:400px"><button style="position:absolute;top:110px;left:120px">Cadre</button>';
+    document.getElementById('finished').append(f);
+    await new Promise((r) => (f.contentDocument?.readyState === 'complete' && f.contentDocument.querySelector('button') ? r() : f.addEventListener('load', r, { once: true })));
+    const b = f.contentDocument.querySelector('button');
+    const words = 'Une aide bien plus large que le petit cadre qui tient son bouton, sur deux lignes.';
+    const t = window.tooltip(b, { content: words, maxWidth: 380, delayMs: 0, animation: 'none', root: document.body });
+    window.tips.set('frame', t);
+    t.show();
+    const tip = document.querySelector('.dzt-tooltip.dzt-float:not(.dzg *)');
+    const fb = f.getBoundingClientRect();
+    const s = getComputedStyle(f);
+    const ox = fb.left + f.clientLeft + parseFloat(s.paddingLeft);
+    const oy = fb.top + f.clientTop + parseFloat(s.paddingTop);
+    const a = b.getBoundingClientRect();
+    const r = tip.getBoundingClientRect();
+    const centred = Math.abs((r.left + r.right) / 2 - (ox + (a.left + a.right) / 2));
+    const below = r.top - (oy + a.bottom);
+    const out = r.left < fb.left || r.right > fb.right || r.bottom > fb.bottom;
+    const inPage = tip.ownerDocument === document;
+    const desc = b.getAttribute('aria-description');
+    t.hide();
+    const p = window.popover(b, { content: 'Suivi', animation: 'none', root: document.body });
+    window.pops.set('frame', p);
+    p.open();
+    const y0 = p.el.getBoundingClientRect().top;
+    f.contentWindow.scrollTo(0, 30);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const moved = y0 - p.el.getBoundingClientRect().top;
+    return { centred, below, out, inPage, desc: desc === words, moved, open: p.isOpen };
+  });
+  check(`${tag}: (34) an iframe's anchor: its bubble in the page, past the iframe's box, centred on the anchor, described; followed on scroll`, fr.inPage && fr.out && fr.centred <= 1.5 && fr.below > 0 && fr.below < 16 && fr.desc && fr.open && Math.abs(fr.moved - 30) <= 1, fr);
+
+  // (35) The way to a far bubble: a diagonal path of ~400 ms leaving the button, more than half of it outside both:
+  // the bubble stays; a way away from it: it goes.
+  await clean();
+  const tri = await page.evaluate(() => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Loin' });
+    // Below the page's grid (its cells have tooltips of their own, which a way across them would show).
+    b.style.cssText = 'position: fixed; inset-block-start: 400px; inset-inline-start: 300px; inline-size: 80px; block-size: 30px';
+    document.getElementById('finished').append(b);
+    window.tips.set('far', window.tooltip(b, { content: 'Une bulle placée loin de son bouton, en diagonale, à atteindre sans la perdre.', maxWidth: 320, delayMs: 0, animation: 'none', offset: { mainAxis: 60, crossAxis: 150 } }));
+    const r = b.getBoundingClientRect();
+    return { b: [r.left, r.top, r.right, r.bottom] };
+  });
+  const [bl, bt, br, bb] = tri.b;
+  await page.mouse.move(2, 690);
+  await page.mouse.move((bl + br) / 2, (bt + bb) / 2, { steps: 4 });
+  await page.waitForTimeout(150);
+  const far = await page.evaluate((B) => { const r = document.querySelector(B).getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }, B);
+  // From the button's edge towards the line's end to the bubble's far corner (below, at the line's end).
+  const from = [rtl ? bl + 2 : br - 2, (bt + bb) / 2];
+  const to = [rtl ? far[0] + 4 : far[2] - 4, far[3] - 4];
+  for (let k = 0; k <= 20; k++) {
+    await page.mouse.move(from[0] + ((to[0] - from[0]) * k) / 20, from[1] + ((to[1] - from[1]) * k) / 20);
+    await page.waitForTimeout(20);
+  }
+  await page.waitForTimeout(500);
+  const stays = await page.evaluate((B) => !document.querySelector(B).hidden, B);
+  await page.mouse.move(...from, { steps: 3 });
+  await page.mouse.move(from[0], 20, { steps: 6 });
+  await page.waitForTimeout(800);
+  const goes = await page.evaluate((B) => document.querySelector(B).hidden, B);
+  check(`${tag}: (35) a diagonal way to the bubble's far corner keeps it; a way away from it lets it go`, stays && goes, { stays, goes, far });
+  await page.mouse.move(2, 690);
+
+  // (36) A modal popover: the page inert, Tab kept inside, Escape anywhere, the page back before the focus on the trigger.
+  await clean();
+  await page.evaluate(() => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', id: 'modalb', textContent: 'Modale' });
+    b.style.cssText = 'position: fixed; inset-block-start: 250px; inset-inline-start: 250px';
+    document.getElementById('finished').append(b);
+    window.pops.set('modal', window.popover(b, { content: () => window.form(), modal: true, animation: 'none' }));
+    b.focus();
+  });
+  await page.keyboard.press('Enter');
+  const m1 = await page.evaluate(() => ({ modal: window.pops.get('modal').el?.getAttribute('aria-modal'), inside: window.pops.get('modal').el?.contains(document.activeElement), mainInert: document.querySelector('main')?.inert, gridInert: document.getElementById('host')?.closest('[inert]') !== null }));
+  for (let k = 0; k < 5; k++) await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  const m2 = await page.evaluate(() => window.pops.get('modal').el?.contains(document.activeElement));
+  if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: AXE });
+  const axeModal = await page.evaluate(async () => (await window.axe.run(document.body, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] })).violations.map((x) => x.id));
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('Escape');
+  const m3 = await page.evaluate(() => ({ open: window.pops.get('modal').isOpen, focus: document.activeElement?.id, inert: document.querySelectorAll('[inert]').length }));
+  check(`${tag}: (36) a modal popover: the page inert, Tab kept inside, axe clean; Escape anywhere, the page back, the focus on its trigger`, m1.modal === 'true' && m1.inside && m1.mainInert && m2 && axeModal.length === 0 && !m3.open && m3.focus === 'modalb' && m3.inert === 0, { m1, m2, axeModal, m3 });
+
+  // (37) A link broken over two lines: the bubble on the piece hovered (the second line), not on the box around both.
+  await clean();
+  const pieces = await page.evaluate(() => {
+    const p = document.createElement('p');
+    p.style.cssText = 'position: fixed; inset-block-start: 420px; inset-inline-start: 300px; inline-size: 170px; margin: 0; font: 16px/24px system-ui';
+    const a = Object.assign(document.createElement('a'), { href: '#suite', textContent: 'un lien assez long qui passe à la ligne' });
+    p.append('Voici ', a, '.');
+    document.getElementById('finished').append(p);
+    window.tips.set('link', window.tooltip(a, { content: 'Vers la suite', delayMs: 0, animation: 'none' }));
+    return [...a.getClientRects()].map((r) => [r.left, r.top, r.right, r.bottom]);
+  });
+  const last = pieces[pieces.length - 1];
+  await page.mouse.move((last[0] + last[2]) / 2, (last[1] + last[3]) / 2, { steps: 3 });
+  await page.waitForTimeout(100);
+  const on2 = await page.evaluate((B) => { const r = document.querySelector(B).getBoundingClientRect(); return [(r.left + r.right) / 2, r.top]; }, B);
+  check(`${tag}: (37) a link over ${pieces.length} lines: the bubble under the piece hovered, centred on it`, pieces.length >= 2 && Math.abs(on2[0] - (last[0] + last[2]) / 2) <= 1.5 && on2[1] >= last[3], { pieces, on2 });
+  await page.mouse.move(2, 690);
+  await settle();
+
+  // (38) A virtual point; a text selection (a Range as it is); the cursor followed along a zone.
+  await clean();
+  const virt = await page.evaluate(async (B) => {
+    const t = window.tooltip({ getBoundingClientRect: () => ({ left: 450, right: 450, top: 300, bottom: 300 }) }, { content: 'Un point', animation: 'none' });
+    window.tips.set('pt', t);
+    t.show();
+    const r = document.querySelector(B).getBoundingClientRect();
+    const point = { dx: (r.left + r.right) / 2 - 450, below: r.top > 300 };
+    t.hide();
+    const p = Object.assign(document.createElement('p'), { textContent: 'Choisir un mot dans cette phrase.' });
+    p.style.cssText = 'position: fixed; inset-block-start: 500px; inset-inline-start: 200px; margin: 0';
+    document.getElementById('finished').append(p);
+    const range = document.createRange();
+    range.setStart(p.firstChild, 9);
+    range.setEnd(p.firstChild, 15);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    const h = window.popover(range, { content: 'Gras', label: 'Mise en forme', animation: 'none' });
+    window.pops.set('sel', h);
+    h.open();
+    const s = range.getBoundingClientRect();
+    const b = h.el.getBoundingClientRect();
+    const sel = { dx: (b.left + b.right) / 2 - (s.left + s.right) / 2, below: b.top >= s.bottom, label: h.el.getAttribute('aria-label') };
+    getSelection().removeAllRanges();
+    const z = document.createElement('div');
+    z.style.cssText = 'position: fixed; inset-block-start: 150px; inset-inline-start: 100px; inline-size: 600px; block-size: 60px; outline: 1px dashed';
+    document.getElementById('finished').append(z);
+    window.tips.set('zone', window.tooltip(z, { content: 'Suit', delayMs: 0, animation: 'none', followCursor: 'inline' }));
+    const zr = z.getBoundingClientRect();
+    return { point, sel, zone: [zr.left, zr.top, zr.right, zr.bottom] };
+  }, B);
+  const zy = (virt.zone[1] + virt.zone[3]) / 2;
+  await page.mouse.move(virt.zone[0] + 100, zy, { steps: 3 });
+  await page.mouse.move(virt.zone[0] + 400, zy, { steps: 6 });
+  await frames(page);
+  const followed = await page.evaluate((B) => { const r = document.querySelector(B).getBoundingClientRect(); return (r.left + r.right) / 2; }, B);
+  check(`${tag}: (38) a virtual point, a text selection and a followed cursor: each bubble centred on it`, Math.abs(virt.point.dx) <= 1 && virt.point.below && Math.abs(virt.sel.dx) <= 1.5 && virt.sel.below && virt.sel.label === 'Mise en forme' && Math.abs(followed - (virt.zone[0] + 400)) <= 1.5, { virt, followed });
+  await page.mouse.move(2, 690);
+  await settle();
+
+  // (39) An anchor moved by an animation (a transform: no observer sees it): followed at every frame.
+  await clean();
+  const anim = await page.evaluate(async ({ B, rtl }) => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Anime' });
+    b.style.cssText = 'position: fixed; inset-block-start: 250px; inset-inline-start: 200px';
+    document.getElementById('finished').append(b);
+    const t = window.tooltip(b, { content: 'Je suis', delayMs: 0, animation: 'none', everyFrame: true });
+    window.tips.set('anim', t);
+    t.show();
+    // Towards the line's end, staying in the window (a transform's axes are the screen's).
+    const a = b.animate([{ transform: 'translate(0, 0)' }, { transform: `translate(${rtl ? -300 : 300}px, 80px)` }], { duration: 800, easing: 'linear' });
+    const worst = [];
+    await new Promise((done) => {
+      const end = performance.now() + 600;
+      const look = () => {
+        const r = document.querySelector(B).getBoundingClientRect();
+        const q = b.getBoundingClientRect();
+        worst.push(Math.abs((r.left + r.right) / 2 - (q.left + q.right) / 2));
+        if (performance.now() < end) requestAnimationFrame(look);
+        else done();
+      };
+      requestAnimationFrame(look);
+    });
+    a.cancel();
+    return { frames: worst.length, worst: Math.max(...worst) };
+  }, { B, rtl });
+  check(`${tag}: (39) an anchor moved by an animation: followed at every frame (worst ${anim.worst.toFixed(1)} px over ${anim.frames} frames)`, anim.frames >= 10 && anim.worst <= 1.5, anim);
+
+  // (40) A hover card: the mouse resting opens it (no focus moved), onto it keeps it, away closes it; the keyboard: a
+  // focus opens it, Tab goes in, Escape back to the link.
+  await clean();
+  const link = await page.evaluate(() => {
+    const a = Object.assign(document.createElement('a'), { href: '#ada', id: 'ada', textContent: 'Ada Lovelace' });
+    a.style.cssText = 'position: fixed; inset-block-start: 300px; inset-inline-start: 400px';
+    document.getElementById('finished').append(a);
+    const card = () => { const d = document.createElement('div'); d.append('Mathématicienne. '); d.append(Object.assign(document.createElement('button'), { type: 'button', className: 'follow', textContent: 'Suivre' })); return d; };
+    window.pops.set('card', window.popover(a, { openOn: 'hover', content: card, animation: 'none' }));
+    const r = a.getBoundingClientRect();
+    return [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
+  });
+  await page.mouse.move(...link, { steps: 4 });
+  await page.waitForTimeout(650);
+  const c1 = await page.evaluate(() => ({ open: window.pops.get('card').isOpen, focus: document.activeElement === document.body || document.activeElement?.id === 'modalb' || !window.pops.get('card').el?.contains(document.activeElement) }));
+  const cardAt = await page.evaluate(() => { const r = window.pops.get('card').el.getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2]; });
+  await page.mouse.move(...cardAt, { steps: 6 });
+  await page.waitForTimeout(400);
+  const c2 = await page.evaluate(() => window.pops.get('card').isOpen);
+  await page.mouse.move(cardAt[0], 690, { steps: 6 });
+  await page.waitForTimeout(800);
+  const c3 = await page.evaluate(() => window.pops.get('card').isOpen);
+  // A keyboard focus: a key, then the focus on the link (WebKit leaves links out of Tab's order by default).
+  await page.keyboard.press('Shift');
+  await page.evaluate(() => document.getElementById('ada').focus());
+  const k1 = await page.evaluate(() => ({ open: window.pops.get('card').isOpen, focus: document.activeElement?.id }));
+  await page.keyboard.press('Tab');
+  const k2 = await page.evaluate(() => document.activeElement?.className);
+  await page.keyboard.press('Escape');
+  const k3 = await page.evaluate(() => ({ open: window.pops.get('card').isOpen, focus: document.activeElement?.id }));
+  check(`${tag}: (40) a hover card: opened by the mouse resting (focus kept), onto it kept, away closed; a keyboard focus opens it, Tab in, Escape back`, c1.open && c1.focus && c2 && !c3 && k1.open && k1.focus === 'ada' && k2 === 'follow' && !k3.open && k3.focus === 'ada', { c1, c2, c3, k1, k2, k3 });
+  await page.mouse.move(2, 690);
   await clean();
   await settle();
 }
@@ -958,9 +1284,22 @@ async function run(name, cfg) {
     await page.setViewportSize({ width: 900, height: 700 });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await tipsChecks(page, tag, cfg, name);
+    if (section === 'finished') {
+      // Only the last rows (`--section=finished`): the page loaded and axe added, as the first checks do.
+      await page.goto(site.url(`tips.html?lang=${lang}&css=${css}${dark ? '&dark=1' : ''}`));
+      await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 });
+      await page.addScriptTag({ content: AXE });
+      if (css === 'layered' && !preflight) await finishedChecks(page, tag, name);
+    } else await tipsChecks(page, tag, cfg, name);
+    if (section === 'finished') {
+      check(`${tag}: no page error`, errors.length === 0, errors);
+      await page.close();
+      return;
+    }
     // The hard cases once per browser, scheme and direction (their geometry does not depend on the sheet's copy).
     if (css === 'layered' && !preflight) await robustChecks(page, tag);
+    // The last rows of the audit, the same way (sheet 31–40).
+    if (css === 'layered' && !preflight) await finishedChecks(page, tag, name);
     check(`${tag}: no page error`, errors.length === 0, errors);
     await page.close();
   } finally {

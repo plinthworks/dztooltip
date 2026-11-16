@@ -1,8 +1,9 @@
 import type { TipAlign, TipAnimation, TipSide, TipTone, TooltipPlacement } from './types.js';
-import { logicalBox, type Dir } from './dir.js';
-import { describe, setAttr, setPx } from './write.js';
+import { logicalOf, type Dir } from './dir.js';
+import { setAttr, setPx } from './write.js';
 import type { Scope } from './scope.js';
 import { absent, placed, rootFor, track } from './follow.js';
+import { boxOf, contextOf, holds, isElement, tie, type Anchor } from './anchor.js';
 
 let ids = 0;
 
@@ -66,7 +67,42 @@ export interface TipLook {
   readonly style?: Readonly<Record<`--${string}`, string>>;
   /** Its widest: px, or a CSS length (23). */
   readonly maxWidth?: number | string;
+  /**
+   * The gap and a slide of the app's (31): a number is the gap between the anchor and the arrow's tip (default 4); an
+   * object adds a slide along the other axis; a function answers either at each placement, for each side tried.
+   */
+  readonly offset?: number | TipOffset | ((s: TipOffsetState) => number | TipOffset);
+  /**
+   * Sliding along the other axis to stay in the window (32): `true` (default), `'attached'` (never so far that it
+   * leaves its anchor: the arrow stays on it), `false` (never).
+   */
+  readonly shift?: boolean | 'attached';
+  /** The anchor's box checked at every frame while shown (39): an anchor moved by an animation or a transform. */
+  readonly everyFrame?: boolean;
 }
+
+/** An offset's parts (31): px. */
+export interface TipOffset {
+  /** The gap between the anchor and the arrow's tip. @default 4 */
+  readonly mainAxis?: number;
+  /** A slide along the other axis: towards the line's end (a bubble above or below) or the block's end (beside). */
+  readonly crossAxis?: number;
+  /** For an aligned placement (`-start`, `-end`) only: replaces `crossAxis`, a slide inwards from the aligned edge. */
+  readonly alignmentAxis?: number | null;
+}
+
+/** What an offset function is told (31): the side tried, the alignment, the anchor's and the bubble's sizes. */
+export interface TipOffsetState {
+  readonly side: TipSide;
+  readonly align: TipAlign;
+  readonly anchor: { readonly inlineSize: number; readonly blockSize: number };
+  readonly bubble: { readonly inlineSize: number; readonly blockSize: number };
+}
+
+/** How a bubble is placed beyond its side (31, 32). */
+export type PlaceHow = Pick<TipLook, 'offset' | 'shift'>;
+
+const fin = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 
 /** What a tooltip shows: its words (what a screen reader hears), and its own look over the bubble's. */
 export interface TipFor {
@@ -84,8 +120,10 @@ export interface TipFor {
   /** Drawn instead of the text (cleaned HTML, an app's nodes); `gone()` when it is taken out (the page's fill). */
   readonly node?: Node | null | undefined;
   readonly gone?: (() => void) | undefined;
-  /** Where the bubble goes in the page (30): this element; none, the anchor's open `<dialog>` or the page's end. */
+  /** Where the bubble goes in the page (30, 34): this element; none, the anchor's open `<dialog>` or the page's end. */
   readonly root?: Element | null | undefined;
+  /** Placed by this instead of the anchor (37, 38): the piece the pointer is on, the pointer's point. */
+  readonly by?: Anchor | undefined;
 }
 
 const OPPOSITE: Record<TipSide, TipSide> = { 'block-end': 'block-start', 'block-start': 'block-end', 'inline-end': 'inline-start', 'inline-start': 'inline-end' };
@@ -94,24 +132,27 @@ const ACROSS: Record<'b' | 'i', readonly TipSide[]> = { b: ['inline-end', 'inlin
 const ALL: readonly TipSide[] = ['block-end', 'block-start', 'inline-end', 'inline-start'];
 
 /**
- * Places a fixed bubble by its anchor (tooltips-popovers.md 4, 25, 26): on `side` when it fits there whole; otherwise —
- * `flip` — its opposite, then the two sides across, the first where it fits; fitting nowhere, where the most of it is
- * seen. `auto`: among the sides where it fits, the one with the most room left around it. Along the other axis at the
- * anchor's start, middle or end, kept in the window. The gap is 4 px and the bubble's block-start margin (the arrow's
- * size), which the written inset gives back; `--dzt-viewport-padding` (px) keeps it from the window's edges. Writes
+ * Places a fixed bubble by its anchor (tooltips-popovers.md 4, 25, 26, 31, 32, 37, 38): on `side` when it fits there
+ * whole; otherwise — `flip` — its opposite, then the two sides across, the first where it fits; fitting nowhere, where
+ * the most of it is seen. `auto`: among the sides where it fits, the one with the most room left around it. Along the
+ * other axis at the anchor's start, middle or end, slid by the offset, kept in the window (`shift`; `'attached'`: never
+ * off its anchor). The gap is the offset's (4 px by default) and the bubble's block-start margin (the arrow's size),
+ * which the written inset gives back; `--dzt-viewport-padding` (px) keeps it from the window's edges. Writes
  * `data-side`, the arrow's place (`--dzt-tip-at`), and the room it has (`--dzt-available-block-size`, `-inline-size`;
  * a popover's body its own block room; a tooltip taller than its room `data-overflow`, to scroll). Sizes from the layout
- * box: a running `scale` does not count.
+ * box: a running `scale` does not count. The anchor is an element (its line piece, 37) or a virtual one (38), read on
+ * the bubble's screen (34); unreadable, nothing is written.
  */
-export function place(el: HTMLElement, anchor: Element, dir: Dir, side: TipSide, align: TipAlign, flip = true, auto = false): TipSide {
+export function place(el: HTMLElement, anchor: Anchor, dir: Dir, side: TipSide, align: TipAlign, flip = true, auto = false, how: PlaceHow = {}): TipSide {
   const win = el.ownerDocument.defaultView!;
   // A fixed bubble's room is the viewport less its scrollbars (`right: 0` sits against a classic scrollbar, not under
   // it): the root's client size, the window's where there is no layout.
   const de = el.ownerDocument.documentElement;
   const W = de.clientWidth || win.innerWidth;
   const H = de.clientHeight || win.innerHeight;
-  const box = anchor.getBoundingClientRect();
-  const a = logicalBox(box, dir, W);
+  const box = boxOf(anchor, el.ownerDocument);
+  if (!box) return side;
+  const a = logicalOf(box, dir, W);
   const cs = getComputedStyle(el);
   const pad = Math.max(0, parseFloat(cs.getPropertyValue('--dzt-viewport-padding')) || 0);
   const body = el.querySelector<HTMLElement>(':scope > .dzt-popover-body');
@@ -123,10 +164,30 @@ export function place(el: HTMLElement, anchor: Element, dir: Dir, side: TipSide,
   const w = el.offsetWidth;
   const h = el.offsetHeight + (body ? body.scrollHeight - body.clientHeight : 0);
   const m = parseFloat(cs.marginTop) || 0;
-  const g = 4 + m;
+  /** The offset on a side (31): the gap and the slide; a function asked once per side, its throw reported. */
+  const offs = new Map<TipSide, { main: number; cross: number }>();
+  const off = (s: TipSide): { main: number; cross: number } => {
+    let o = offs.get(s);
+    if (o) return o;
+    let v: unknown = how.offset;
+    if (typeof v === 'function') {
+      try {
+        v = v({ side: s, align, anchor: { inlineSize: a.ie - a.is, blockSize: a.be - a.bs }, bubble: { inlineSize: w, blockSize: h } });
+      } catch (err) {
+        win.reportError?.(err);
+        v = undefined;
+      }
+    }
+    const x = v && typeof v === 'object' ? (v as TipOffset) : null;
+    const along = x && align && x.alignmentAxis != null ? fin(x.alignmentAxis, 0) * -align : null;
+    o = { main: fin(x ? x.mainAxis : v, 4), cross: along ?? fin(x?.crossAxis, 0) };
+    offs.set(s, o);
+    return o;
+  };
+  const g = (s: TipSide): number => off(s).main + m;
   /** The room on a side: along its axis, from the gap to the window's edge; across, the window's. */
   const room = (s: TipSide): { b: number; i: number } => {
-    const along = s === 'block-end' ? H - pad - a.be - g : s === 'block-start' ? a.bs - g - pad : s === 'inline-end' ? W - pad - a.ie - g : a.is - g - pad;
+    const along = s === 'block-end' ? H - pad - a.be - g(s) : s === 'block-start' ? a.bs - g(s) - pad : s === 'inline-end' ? W - pad - a.ie - g(s) : a.is - g(s) - pad;
     return s[0] === 'b' ? { b: along, i: W - 2 * pad } : { b: H - 2 * pad, i: along };
   };
   const fits = (s: TipSide): boolean => room(s).b >= h && room(s).i >= w;
@@ -151,9 +212,16 @@ export function place(el: HTMLElement, anchor: Element, dir: Dir, side: TipSide,
   const block = used[0] === 'b';
   const end = used.endsWith('d');
   const [lo, hi, size] = block ? [a.bs, a.be, hs] : [a.is, a.ie, ws];
-  const main = end ? hi + g : lo - g - size;
+  const main = end ? hi + g(used) : lo - g(used) - size;
   const [clo, chi, csize, croom] = block ? [a.is, a.ie, ws, W] : [a.bs, a.be, hs, H];
-  const cross = Math.max(pad, Math.min(align < 0 ? clo : align ? chi - csize : (clo + chi - csize) / 2, croom - csize - pad));
+  let cross = (align < 0 ? clo : align ? chi - csize : (clo + chi - csize) / 2) + off(used).cross;
+  // Kept in the window (32), unless asked not to slide.
+  if (how.shift !== false) cross = Math.max(pad, Math.min(cross, croom - csize - pad));
+  // Attached: never so far that its arrow leaves the anchor — 12 px from its corner and some of the anchor beside it.
+  if (how.shift === 'attached') {
+    const e = 12 + Math.min(8, (chi - clo) / 2);
+    if (clo + e - csize <= chi - e) cross = Math.max(clo + e - csize, Math.min(cross, chi - e));
+  }
   setPx(el, 'inset-block-start', (block ? main : cross) - m);
   setPx(el, 'inset-inline-start', block ? cross : main);
   setAttr(el, 'data-side', used);
@@ -203,7 +271,9 @@ export function hideBubble(el: HTMLElement): void {
  */
 export class Tooltip implements TipControl {
   readonly el: HTMLElement;
-  #anchor: HTMLElement | null = null;
+  /** What it shows about (an element or a virtual anchor, 38), and what it is placed by (the same, a piece, a point). */
+  #anchor: Anchor | null = null;
+  #by: Anchor | null = null;
   #cancelShow: (() => void) | null = null;
   #cancelHide: (() => void) | null = null;
   #closing: (() => void) | null = null;
@@ -242,23 +312,30 @@ export class Tooltip implements TipControl {
     tips.set(el, this);
     scope.on(el, 'pointerenter', () => this.#keep());
     scope.on(el, 'pointerleave', (e: PointerEvent) => {
-      if (!this.#anchor || !this.#anchor.contains(e.relatedTarget as Node | null)) this.hideSoon();
+      const a = this.anchor;
+      if (!a || !holds(a, e.relatedTarget as Node | null)) this.hideSoon();
     });
   }
 
+  /** The element it shows about (none for a virtual anchor, 38). */
   get anchor(): HTMLElement | null {
+    return isElement(this.#anchor) ? (this.#anchor as HTMLElement) : null;
+  }
+
+  /** What it shows about: an element or a virtual anchor. */
+  get current(): Anchor | null {
     return this.#anchor;
   }
 
   /** After `delay` ms (0: now), unless something else is shown or hidden first. */
-  showFor(anchor: HTMLElement, tip: TipFor, dir: Dir, delay: number): void {
+  showFor(anchor: Anchor, tip: TipFor, dir: Dir, delay: number): void {
     this.#keep();
     this.drop();
     if (delay <= 0) return this.#show(anchor, tip, dir);
     this.#cancelShow = this.#scope.timeout(() => {
       this.#cancelShow = null;
       // Still on the page, and still wanted (18).
-      if (anchor.isConnected && this.ok?.(anchor) !== false) this.#show(anchor, tip, dir);
+      if (!absent(anchor) && (!isElement(anchor) || this.ok?.(anchor) !== false)) this.#show(anchor, tip, dir);
     }, delay);
   }
 
@@ -281,13 +358,14 @@ export class Tooltip implements TipControl {
   hide(): void {
     this.drop();
     this.#keep();
-    if (this.#anchor) describe(this.#anchor, this.el.id, false);
-    const was = this.#anchor;
-    this.#anchor = null;
+    if (this.anchor) tie(this.anchor, this.el, 'describedby', false);
+    const was = this.anchor;
+    const had = this.#anchor;
+    this.#anchor = this.#by = null;
     this.#untrack?.();
     this.#untrack = null;
     // A hidden tooltip keeps no content: it goes once the closing is over.
-    if (!was || this.el.hidden) return void ((this.el.hidden = true), this.fill?.(null));
+    if (!had || this.el.hidden) return void ((this.el.hidden = true), this.fill?.(null));
     // Its group warm a while (29).
     this.#cancelRecent?.();
     this.recent = was;
@@ -303,16 +381,29 @@ export class Tooltip implements TipControl {
     this.#cancelHide = null;
   }
 
-  #show(anchor: HTMLElement, tip: TipFor, dir: Dir): void {
+  /** Places it again now, where it was asked (a pointer followed, 38). */
+  replace(): void {
+    if (this.#by && this.#placed && !this.el.hidden) this.#place();
+  }
+
+  #place(): void {
+    const [dir, side, align, flip = true, auto = false] = this.#placed!;
+    place(this.el, this.#by!, dir, side, align, flip, auto, this.look());
+  }
+
+  #show(anchor: Anchor, tip: TipFor, dir: Dir): void {
+    // Gone already (its element left the page, a virtual rectangle unreadable): nothing shown.
+    if (absent(anchor)) return;
     this.#closing?.();
     this.#closing = null;
-    if (this.#anchor && this.#anchor !== anchor) describe(this.#anchor, this.el.id, false);
+    if (this.anchor && this.#anchor !== anchor) tie(this.anchor, this.el, 'describedby', false);
     this.#anchor = anchor;
+    this.#by = tip.by ?? anchor;
     this.#cancelRecent?.();
     this.#cancelRecent = null;
     this.recent = null;
-    // In the anchor's open dialog, or the root given (30): inert nowhere.
-    const root = rootFor(anchor, tip.root);
+    // In the anchor's open dialog, or the root given (30, 34): inert nowhere.
+    const root = rootFor(contextOf(anchor), tip.root, this.el.ownerDocument);
     if (this.el.parentNode !== root) root.append(this.el);
     // Drawn before it is measured: its size is the part's. Cleaned HTML: its nodes.
     if (!this.fill?.(tip)) {
@@ -322,18 +413,18 @@ export class Tooltip implements TipControl {
     // Dressed (`at`) before it shows, then measured and placed in the same task: its first frame is its opening's.
     let at!: ReturnType<Tooltip['at']>;
     reveal(this.el, this.look(), tip.tone, () => void (at = this.at(tip, dir)));
-    // A button's tooltip that is its name already: not twice.
-    describe(anchor, this.el.id, !tip.said);
+    // A button's tooltip that is its name already: not twice. Across a shadow root or a frame: as it can (33, 34).
+    if (this.anchor) tie(this.anchor, this.el, 'describedby', !tip.said, tip.text);
     this.#placed = [dir, ...at];
-    place(this.el, anchor, dir, ...at);
-    // Followed while shown (27); gone with its anchor (28).
+    this.#place();
+    // Followed while shown (27, 39); gone with its anchor (28).
     this.#untrack?.();
-    this.#untrack = track(anchor, this.el, () => {
+    this.#untrack = track(this.#by, this.el, () => {
       const a = this.#anchor;
       if (!a || !this.#placed) return;
       if (absent(a)) return this.hide();
-      place(this.el, a, ...this.#placed);
-    });
+      this.#place();
+    }, undefined, [], !!this.look().everyFrame);
     this.onShow?.(this);
   }
 }

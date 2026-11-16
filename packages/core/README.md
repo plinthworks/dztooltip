@@ -1,8 +1,10 @@
 # @dztooltip/core
 
-Tooltips and popovers for any element of a page: twelve placements and `auto`, flip and shift, the arrow following the
-anchor, never bigger than the room; tones, shapes, CSS animations (with `@dztooltip/theme`) or your own (`animate`);
-words, nodes, or HTML cleaned by `safeHtml`. Right to left designed in, WCAG 1.4.13. No dependency.
+Tooltips and popovers for any element of a page: twelve placements and `auto`, flip, shift (or `'attached'`), an
+offset, the arrow following the anchor, never bigger than the room; anchors in shadow roots and iframes, virtual ones
+(a point, a text selection), a followed cursor, an animated anchor; modal popovers and hover cards, a safe triangle on
+the way to the bubble; tones, shapes, CSS animations (with `@dztooltip/theme`) or your own (`animate`); words, nodes,
+or HTML cleaned by `safeHtml`. Right to left designed in, WCAG 1.4.13. No dependency.
 
 ```sh
 npm install @dztooltip/core @dztooltip/theme

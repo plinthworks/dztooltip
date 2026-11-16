@@ -17,3 +17,18 @@ export const describe = (el: Element, id: string, on: boolean): void => {
   if (on) t.push(id);
   setAttr(el, 'aria-describedby', t.join(' ') || null);
 };
+
+/**
+ * Listeners taken off together, by hand: an `AbortSignal` made by one window is refused by another window's targets in
+ * some environments, and an anchor in an iframe with its bubble above listens in both (34).
+ */
+export class Ears {
+  #offs: (() => void)[] = [];
+  on(t: EventTarget, type: string, fn: (e: Event) => void, opts: AddEventListenerOptions = {}): void {
+    t.addEventListener(type, fn, opts);
+    this.#offs.push(() => t.removeEventListener(type, fn, opts));
+  }
+  off(): void {
+    for (const f of this.#offs.splice(0)) f();
+  }
+}

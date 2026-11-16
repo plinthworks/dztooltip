@@ -46,6 +46,47 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
   - Browser checks: `scripts/browser.mjs` now runs here — the audit's evidence pages as a section of their own (« the
     hard cases », 12 runs: Chrome, Firefox, WebKit × light, dark × French, Arabic), and the whole matrix green; its page
     selector no longer catches the grid's bubble (19 checks had failed since the move for that reason).
+- **Finished** (owner 2026-11-16, « je veux que tu finisses la lib bien comme il faut »: every partial and missing row
+  of `docs/audit-floating-ui.md`, sheet 31–40; Floating UI's public documentation for behaviour only) — the audit's
+  score goes from 25 to 35 / 35:
+  - **`offset`** (31; `dzTooltipOffset`, `dzPopoverOffset`, the bridge): the gap (4 px by default, as before), or
+    `{ mainAxis, crossAxis, alignmentAxis }` (logical: mirrored in right to left), or a function of the side tried and
+    the sizes. Not a finite number: none; a throwing function: reported, none.
+  - **`shift`** (32): `true` (the default, as before), `'attached'` (slides but never off its anchor: the arrow stays on
+    it), `false` (never slides).
+  - **An anchor in a shadow root** (33): a tooltip describes it through ARIA element reflection
+    (`ariaDescribedByElements`), or `aria-description` where the browser has none; a popover's trigger gets
+    `ariaControlsElements`, the popover its trigger's words as its name; a press on the trigger is no longer
+    « outside »; Tab past the popover goes on after the shadow host; an open `<dialog>` around the host is found.
+  - **An anchor in an iframe** (34): `root` may be an element of a page up the frames (same origin) — the bubble is
+    made there and placed over the iframe (its border and padding counted), followed when either document scrolls or
+    resizes; its words go in the anchor's `aria-description`. A `root` that cannot be reached is ignored.
+  - **A safe triangle** (35): the pointer on its way from the anchor to a shown tooltip or hover card keeps it open
+    (it goes when the pointer leaves that way, the window, or rests 400 ms on it short of the bubble).
+  - **A modal popover** (36; `modal`, `initialFocus`, `returnFocus`; `dzPopoverModal`, `dzPopoverInitialFocus`,
+    `dzPopoverReturnFocus`): `aria-modal`, the rest of the page `inert` (`aria-hidden` and focus guards where `inert`
+    is missing), Tab wraps inside, a focus outside brought back, Escape anywhere and a press outside close it, the page
+    given back before the focus returns; only the newest of two open modals keeps the focus; non-modal by default.
+  - **A link broken over lines** (37): the bubble on the line piece hovered or clicked (the first from the keyboard).
+  - **Virtual anchors** (38): `tooltip()` and `popover()` take `{ getBoundingClientRect(), getClientRects?(),
+    contextElement? }` (a point, a chart's mark, a `Range` as it is; type `VirtualAnchor`), shown by code; an
+    unreadable rectangle is reported once (`dztooltip: not-a-rect`), never thrown. `followCursor` (`true`, `'inline'`,
+    `'block'`; `dzTooltipFollowCursor`) places a tooltip by the pointer and moves it once a frame. Line 28's refusal
+    now covers only what is neither an element nor a virtual anchor.
+  - **`everyFrame`** (39; `dzTooltipEveryFrame`, `dzPopoverEveryFrame`, the bridge): the anchor's box read at every frame
+    while shown, for an anchor moved by an animation or a transform; stopped when it closes.
+  - **A hover card** (40): `openOn: 'hover'` (`dzPopoverOpenOn="hover"`, with `delayMs` / `dzPopoverDelay`, 500, and
+    `hideDelayMs` / `dzPopoverHideDelay`, 150): opened by the pointer resting or a keyboard focus, no focus moved, Tab
+    from the trigger goes in, closed when the pointer leaves both (reason `leave`), on Escape, a press outside or the
+    focus leaving; a click on its trigger is the trigger's own.
+  - Each with tests written first (`finish-place.test.ts`, `finish-interact.test.ts`, the Angular inputs) and a
+    browser check (`scripts/browser.mjs` section 13, « finished »: Chrome, Firefox, WebKit × light, dark × French,
+    Arabic; `--section=finished` runs it alone). Its review (fresh eyes on the new code): two modal popovers open at
+    once no longer fight for the focus, closing one keeps the page shut for the other, a modal opened from inside a
+    modal shuts its parent, a virtual rectangle whose getter throws no longer escapes, the focus given back to a hover
+    card's trigger no longer opens it again.
+  - Sizes (minified, gzipped): `@dztooltip/core` 7.77 → 11.86 kB whole (`tooltip` alone 6.32 → 9.00, `popover` alone
+    5.81 → 9.95); `@dztooltip/angular` 2.80 → 3.29 kB; the bridge 0.77 → 0.79 kB; the theme unchanged (3.07 kB).
 - `@dztooltip/gsap` dropped (owner 2026-11-16).
 - The 1.0.0 review (fresh eyes on `packages/`; each defect a test that failed first,
   `packages/core/test/review-1-0-0.test.ts`):

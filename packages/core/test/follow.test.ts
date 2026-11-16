@@ -222,27 +222,28 @@ describe('a tooltip follows its anchor, and goes when its anchor goes (27, 28)',
   });
 });
 
-describe('an anchor that is not an element is refused without throwing (28)', () => {
-  const virtual = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10 }) };
+describe('an anchor that is neither an element nor a virtual anchor is refused without throwing (28, 38)', () => {
+  // No `getBoundingClientRect`: not a virtual anchor (38).
+  const shapeless = { contextElement: null, left: 0, top: 0 };
 
   it('tooltip(): a handle that does nothing, one TypeError reported, nothing of the value in it', () => {
     const told: unknown[] = [];
     vi.stubGlobal('reportError', (e: unknown) => void told.push(e));
-    // `as never`: a virtual anchor, which the types refuse — what a JavaScript caller may still pass.
-    const h = tooltip(virtual as never, { content: 'x' });
+    // `as never`: an object the types refuse — what a JavaScript caller may still pass.
+    const h = tooltip(shapeless as never, { content: 'x' });
     expect(() => (h.show(), h.update({ content: 'y' }), h.hide(), h.destroy())).not.toThrow();
     expect(h.shown).toBe(false);
     expect(told).toHaveLength(1);
     expect(told[0]).toBeInstanceOf(TypeError);
     expect((told[0] as Error).message).toMatch(/^dztooltip: not-an-element — tooltip\(el\)/);
-    expect((told[0] as Error).message).not.toContain('getBoundingClientRect');
+    expect((told[0] as Error).message).not.toContain('left');
     expect(document.querySelector('.dzt-float')).toBeNull();
   });
 
   it('popover(): the same, and null and a text node too', () => {
     const told: unknown[] = [];
     vi.stubGlobal('reportError', (e: unknown) => void told.push(e));
-    for (const bad of [virtual, null, document.createTextNode('x')]) {
+    for (const bad of [shapeless, null, document.createTextNode('x')]) {
       // `as never`: what the types refuse, passed as JavaScript would.
       const h = popover(bad as never, { content: 'x' });
       expect(() => (h.open(), h.toggle(), h.reposition(), h.update({}), h.close(), h.destroy())).not.toThrow();

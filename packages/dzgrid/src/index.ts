@@ -118,11 +118,11 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
           // Dressed (its preset, shape, variables; the column's over the grid's) before it shows, then placed.
           reveal(el, o, tip.tone, () => dress(el, o, tip));
           const p = tip.placement ?? o.placement;
-          const at = [...placementOf(p, dir, 'bottom-start'), o.flip !== false, p === 'auto'] as const;
+          const at = [...placementOf(p, dir, 'bottom-start'), o.flip !== false, p === 'auto', o] as const;
           place(el, anchor, dir, ...at);
-          // Followed while shown; its anchor gone: hidden the grid's way (27, 28).
+          // Followed while shown (every frame with `everyFrame`, 39); its anchor gone: hidden the grid's way (27, 28).
           untrack();
-          untrack = track(anchor, el, () => (absent(anchor) ? s.hide() : void place(el, anchor, dir, ...at)));
+          untrack = track(anchor, el, () => (absent(anchor) ? s.hide() : void place(el, anchor, dir, ...at)), undefined, [], !!o.everyFrame);
           // An opening (not a move to another cell): the page's tooltip hidden, the app's animation told.
           if (opening(ctl)) play(el, o, 'open', report);
         },
