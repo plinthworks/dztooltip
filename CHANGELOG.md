@@ -123,6 +123,11 @@ The tooltips and popovers written for DzGrid 1.12.0 (never published there) move
   npm), `npm run publish:latest -- --otp=CODE` (core → theme → angular → dzgrid, what npm has skipped, then the
   registry asked), `npm run publish:verify`; `docs/release-1.0.0.md`. Each package has its README; the published
   manifests carry `repository`, `license`, `keywords`.
+- **A grid cell's bubble points at its text** (owner 2026-11-17, sheet 41: a right-aligned « 10 » whose bubble sat
+  ~100 px to its left, over the header): the bridge places a cell's or a header's bubble by what the cell shows — its
+  words' line boxes cut to what is seen (an ellipsis's visible part), a component's text, else its icon, else the
+  cell —, the line under the pointer for a wrapped text, the first on a keyboard focus. The placement stays the app's
+  (`top` on a first row may cover the header).
 - Measured (minified, gzipped; before the hard cases → now): `@dztooltip/core` whole 6 337 → 7 820 B (`tooltip()`
   alone 4 786 → 6 365, `popover()` alone 4 650 → 5 877); the bridge with core 3 199 → 4 527; `@dztooltip/angular`
   2 751 → 2 858 over core and Angular; `dztooltip.css` 3 059 → 3 126 (unlayered 3 024 → 3 081). No size budgets yet.

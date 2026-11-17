@@ -16,9 +16,12 @@
  * The types below are the part of `@dzgrid/dom`'s seam this bridge uses, written structurally: the bridge has no
  * import of DzGrid, and `dzTooltips()` fits in a DzGrid's `features` list.
  */
-import type { TipLook, TipTone, TipAnimation, TooltipPlacement } from '@dztooltip/core';
+import type { TipLook, TipTone, TipAnimation, TooltipPlacement, VirtualAnchor } from '@dztooltip/core';
 import { safeHtml } from '@dztooltip/core';
-import { absent, closing, conceal, dress, floatStyles, forget, opening, place, placementOf, play, reveal, tips, track, wanted, type TipControl } from '@dztooltip/core/internal';
+import {
+  absent, boxOfRect, closing, conceal, dress, floatStyles, forget, opening, place, placementOf, play, pointOf, rectOfBox, reveal, tips, track, wanted,
+  type Box, type Pt, type TipControl,
+} from '@dztooltip/core/internal';
 
 /** A grid tooltip about to show, as DzGrid hands it: its words and the column's or the cell's own look. */
 export interface GridTipLike {
@@ -77,12 +80,121 @@ export interface DzTooltipsFeature {
 
 const BUTTON = '.dzg-header button[aria-label]';
 
+/** Words a cell holds in a control or hidden from assistive technology: counted only when it has no others (41). */
+const ASIDE = 'button,[role=button],input,select,textarea,[aria-hidden=true]';
+/** What is drawn with no words: its own box, nothing inside it read. */
+const DRAWN = 'svg,img,canvas,video,picture,input,select,textarea,progress,meter,[role=img]';
+/** Never what a cell shows: a header's resize handle. */
+const NEVER = '.dzg-resize';
+
+const meet = (a: Box, b: Box | null): Box | null => {
+  if (!b) return a;
+  const r = { is: Math.max(a.is, b.is), ie: Math.min(a.ie, b.ie), bs: Math.max(a.bs, b.bs), be: Math.min(a.be, b.be) };
+  return r.ie > r.is && r.be > r.bs ? r : null;
+};
+const join = (a: Box, b: Box): Box => ({ is: Math.min(a.is, b.is), ie: Math.max(a.ie, b.ie), bs: Math.min(a.bs, b.bs), be: Math.max(a.be, b.be) });
+/** On one line: their block ranges overlap by half the smaller (as an inline anchor's pieces, 37). */
+const oneLine = (a: Box, b: Box): boolean => Math.min(a.be, b.be) - Math.max(a.bs, b.bs) >= Math.min(a.be - a.bs, b.be - b.bs) / 2;
+const far = (b: Box, p: Pt): number => Math.hypot(Math.max(b.is - p.i, 0, p.i - b.ie), Math.max(b.bs - p.b, 0, p.b - b.be));
+const px = (v: string): number => parseFloat(v) || 0;
+
+/**
+ * What `cell` shows, line by line (tooltips-popovers.md 41): its words' line boxes — else its words in controls or
+ * hidden ones, else what is drawn (an icon, an image, a box with no content) —, each cut to what its clipping
+ * ancestors up to the grid let be seen (an ellipsis's: the content box). Empty: nothing seen.
+ */
+function linesOf(cell: Element): Box[] {
+  const doc = cell.ownerDocument;
+  const win = doc.defaultView;
+  const top = cell.closest('.dzg') ?? cell;
+  const seen = new Map<Element, Box | null>();
+  /** The box an element lets its content be seen in: its own clip (padding box, or content box with an ellipsis), met with its parents'. */
+  const clipOf = (el: Element | null): Box | null => {
+    if (!el || !win) return null;
+    if (seen.has(el)) return seen.get(el)!;
+    const up = el === top ? null : clipOf(el.parentElement ?? ((el.getRootNode() as ShadowRoot).host || null));
+    const cs = win.getComputedStyle(el);
+    // Each axis's own value, or the shorthand's (an engine may answer only one of them).
+    const [ox, oy = ox] = (cs.overflow || '').split(' ');
+    const clips = (...v: (string | undefined)[]): boolean => v.some((w) => !!w && w !== 'visible');
+    const x = clips(cs.overflowX, ox);
+    const y = clips(cs.overflowY, oy);
+    let own: Box | null = null;
+    const r = (x || y) && boxOfRect(el.getBoundingClientRect());
+    if (r) {
+      // The screen's start side is the line's start in a left-to-right element, its end otherwise.
+      const ltr = cs.direction !== 'rtl';
+      const pad = cs.textOverflow === 'ellipsis';
+      const s = px(ltr ? cs.borderInlineStartWidth : cs.borderInlineEndWidth) + (pad ? px(ltr ? cs.paddingInlineStart : cs.paddingInlineEnd) : 0);
+      const e = px(ltr ? cs.borderInlineEndWidth : cs.borderInlineStartWidth) + (pad ? px(ltr ? cs.paddingInlineEnd : cs.paddingInlineStart) : 0);
+      const bs = px(cs.borderBlockStartWidth);
+      const be = px(cs.borderBlockEndWidth);
+      own = { is: x ? r.is + s : -Infinity, ie: x ? r.ie - e : Infinity, bs: y ? r.bs + bs : -Infinity, be: y ? r.be - be : Infinity };
+    }
+    const b = own && up ? meet(own, up) ?? { is: 0, ie: 0, bs: 0, be: 0 } : own ?? up;
+    seen.set(el, b);
+    return b;
+  };
+  const tiers: [Box[], Box[], Box[]] = [[], [], []];
+  const add = (tier: 0 | 1 | 2, rects: ArrayLike<unknown>, at: Element | null): void => {
+    for (const r of Array.from(rects)) {
+      const b = boxOfRect(r);
+      const m = b && meet(b, clipOf(at));
+      if (m) tiers[tier].push(m);
+    }
+  };
+  const walk = (n: Node, aside: boolean): void => {
+    for (const k of Array.from(n.childNodes)) {
+      if (k.nodeType === 3) {
+        if (!k.textContent?.trim()) continue;
+        const range = doc.createRange();
+        range.selectNodeContents(k);
+        if (typeof range.getClientRects === 'function') add(aside ? 1 : 0, range.getClientRects(), k.parentElement);
+      } else if (k.nodeType === 1) {
+        const e = k as Element;
+        if (e.matches(NEVER)) continue;
+        const inside = aside || e.matches(ASIDE);
+        if (e.matches(DRAWN) || !(e.shadowRoot ?? e).childNodes.length) add(2, e.getClientRects(), e);
+        if (!e.matches(DRAWN)) walk(e.shadowRoot ?? e, inside);
+      }
+    }
+  };
+  walk(cell.shadowRoot ?? cell, false);
+  const found = tiers.find((t) => t.length) ?? [];
+  // One box per line, in their order down the cell.
+  const lines: Box[] = [];
+  for (const b of found) {
+    const i = lines.findIndex((l) => oneLine(l, b));
+    if (i >= 0) lines[i] = join(lines[i]!, b);
+    else lines.push(b);
+  }
+  return lines.sort((a, b) => a.bs - b.bs);
+}
+
+/**
+ * A cell's or a header's bubble anchor (41): the line of what it shows under the pointer — the first with no pointer
+ * over the cell (a keyboard focus) —, read again at each placing; the cell when it shows nothing.
+ */
+function textAnchor(cell: HTMLElement, point: () => Pt | null): VirtualAnchor {
+  return {
+    contextElement: cell,
+    getBoundingClientRect: () => {
+      const own = boxOfRect(cell.getBoundingClientRect()) ?? { is: 0, ie: 0, bs: 0, be: 0 };
+      const lines = linesOf(cell);
+      const p = point();
+      const over = p && p.i >= own.is && p.i <= own.ie && p.b >= own.bs && p.b <= own.be ? p : null;
+      const line = over && lines.length ? lines.reduce((x, l) => (far(l, over) < far(x, over) ? l : x)) : lines[0];
+      return rectOfBox(line ?? own);
+    },
+  };
+}
+
 /** DzGrid's cell and header tooltips drawn by DzTooltip (the feature's id is `tooltips`, the one DzGrid's warnings name). */
 export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
   const o = options;
   return {
     id: 'tooltips',
-    setup() {
+    setup(g) {
       let hide: () => void = () => {};
       let report: (e: unknown) => void = () => {};
       // Following the shown bubble's anchor (27); the header button it was on, 300 ms after it hid (29).
@@ -90,6 +202,22 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
       let recent: Element | null = null;
       let recentTimer: ReturnType<typeof setTimeout> | undefined;
       const forgetRecent = (): void => void (clearTimeout(recentTimer), (recent = null));
+      // The pointer's last point in the grid's document (41: the line it is on), heard before the grid hears it: from
+      // the start when DzGrid hands its document (`g.doc`), else from the first target it asks about.
+      let point: Pt | null = null;
+      let heard: Document | null = null;
+      const at = (e: Event): void => void (point = pointOf(e as PointerEvent));
+      const hear = (doc: Document): void => {
+        if (heard) return;
+        heard = doc;
+        for (const t of ['pointerover', 'pointermove']) doc.addEventListener(t, at, { capture: true, passive: true });
+      };
+      const unhear = (): void => {
+        for (const t of ['pointerover', 'pointermove']) heard?.removeEventListener(t, at, { capture: true });
+        heard = null;
+      };
+      const gd = (g as { doc?: unknown } | null)?.doc;
+      if (gd && typeof gd === 'object' && (gd as Node).nodeType === 9) hear(gd as Document);
       /** A header button's tooltip on screen, or hidden less than 300 ms ago, in the same grid: the next at once. */
       const warm = (t: Element): boolean => {
         const was = ctl.anchor ?? recent;
@@ -100,12 +228,15 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
       const tooltips: GridTooltipSeamLike = {
         targets: () => `${o.header ? `${BUTTON},` : ''}.dzg-hcell,.dzg-cell`,
         // Its name already: not described twice.
-        tipFor: (t) => (o.header && t.matches(BUTTON) ? { text: t.getAttribute('aria-label')!, said: true, ...(warm(t) && { delayMs: 0 }) } : undefined),
+        tipFor: (t) => (hear(t.ownerDocument), o.header && t.matches(BUTTON) ? { text: t.getAttribute('aria-label')!, said: true, ...(warm(t) && { delayMs: 0 }) } : undefined),
         ok: (a) => wanted(a),
         ...(o.html && { html: (h: string, doc: Document) => safeHtml(h, doc) }),
         show(s) {
           const { el, anchor, tip, dir } = s;
           const doc = el.ownerDocument;
+          hear(anchor.ownerDocument);
+          // Placed by what the cell shows, not the whole cell (41); a header button by itself.
+          const by = anchor.matches(BUTTON) ? anchor : textAnchor(anchor, () => point);
           floatStyles(doc, o.nonce);
           report = (e) => void doc.defaultView?.reportError?.(e);
           // DzTooltip's bubble from now on: the grid's own look and place no longer apply to it.
@@ -119,10 +250,10 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
           reveal(el, o, tip.tone, () => dress(el, o, tip));
           const p = tip.placement ?? o.placement;
           const at = [...placementOf(p, dir, 'bottom-start'), o.flip !== false, p === 'auto', o] as const;
-          place(el, anchor, dir, ...at);
+          place(el, by, dir, ...at);
           // Followed while shown (every frame with `everyFrame`, 39); its anchor gone: hidden the grid's way (27, 28).
           untrack();
-          untrack = track(anchor, el, () => (absent(anchor) ? s.hide() : void place(el, anchor, dir, ...at)), undefined, [], !!o.everyFrame);
+          untrack = track(by, el, () => (absent(anchor) ? s.hide() : void place(el, by, dir, ...at)), undefined, [], !!o.everyFrame);
           // An opening (not a move to another cell): the page's tooltip hidden, the app's animation told.
           if (opening(ctl)) play(el, o, 'open', report);
         },
@@ -137,7 +268,7 @@ export function dzTooltips(options: DzTooltipsOptions = {}): DzTooltipsFeature {
           return conceal(el, o, done, report);
         },
       };
-      return { tooltips, destroy: () => (untrack(), forgetRecent(), forget(ctl)) };
+      return { tooltips, destroy: () => (untrack(), forgetRecent(), unhear(), forget(ctl)) };
     },
   };
 }

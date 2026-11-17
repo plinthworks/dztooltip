@@ -322,6 +322,19 @@ pattern and from the HTML `inert` attribute and ARIA element reflection, in our 
     leaves is `leave`. The pattern, documented: the card adds to what the trigger already says and does (a link's
     preview, a person's details) — nothing only it holds, since touch and screen reader users may never open it.
 
+### A grid cell's bubble points at its text (owner 2026-11-17: « c'est normal que la tooltip est très loin ? »)
+41. **The bridge anchors on what the cell shows, not on the whole cell.** A cell's or a header's bubble is placed by
+    the box of the words the user reads in it — its text's line boxes, a component's (a part's) text inside its root
+    included, cut to what is seen (a text cut by an ellipsis, a cell half scrolled out: its visible part only) — so a
+    right-aligned number's bubble and its arrow sit over the number, a centred text's over the middle, in either
+    direction. Its words in controls (a button's) or hidden from assistive technology (a sort mark) count only when
+    there are no others; with no words, what is drawn (an icon, an image, a box with no content); with nothing drawn,
+    the cell, as before. A header's resize handle never counts. A wrapped text: the line under the pointer (as an
+    inline anchor's piece, 37); on a keyboard focus, or a pointer not over the cell, its first line. A header button's
+    own name stays anchored on the button. The arrow points at the middle of that box; the side, the flip, the slide
+    and the alignment are as for any bubble (25, 26, 32). The placement stays the app's: with `top` a first row's
+    bubble may sit over the header — chosen, not corrected (an app that minds asks `bottom`, or `auto`).
+
 ## What DzGrid does
 - **One implementation, the weight opt-in** (owner Q-T1 B, 2026-11-14): the base (`render/tooltip.ts`) places (one
   `place()`: 4 sides, 3 alignments, flip, the arrow), shows with its tone, CSS preset and reduced-motion mark, and
@@ -389,4 +402,5 @@ the room, the padding, the fallbacks, `auto`), `follow.test.ts` (27, 28, 30), `t
 hard cases » (25–30, the audit's evidence pages). Finished (31–40): `packages/core/test/finish-place.test.ts` (offset,
 shift, an iframe's anchor, line pieces, virtual anchors, the followed cursor, every frame), `finish-interact.test.ts`
 (shadow roots, the safe triangle, modal popovers, hover cards, the review's defects), the Angular inputs in
-`tooltip-directives.test.ts`; browser: `scripts/browser.mjs` section 13, « finished » (`--section=finished`).
+`tooltip-directives.test.ts`; browser: `scripts/browser.mjs` section 13, « finished » (`--section=finished`). The text anchor (41):
+`packages/dzgrid/test/tooltip-text-anchor-grid.test.ts`; browser: section 14, « text anchor » (`--section=text`).

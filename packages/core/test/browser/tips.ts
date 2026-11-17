@@ -82,4 +82,4 @@ const form = () => {
   f.append(label, inner, ok);
   return f;
 };
-Object.assign(window, { grid, told, tip, tips, pop, pops, form, popover, tooltip, safeHtml, ready: true });
+Object.assign(window, { grid, columns, told, tip, tips, pop, pops, form, popover, tooltip, safeHtml, ready: true });

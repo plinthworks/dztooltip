@@ -5,7 +5,8 @@
  * /dzgrid/) drawn through the bridge, `dzTooltips({ header: true, html: true })`. The matrix: Chrome, Firefox, WebKit ×
  * layered and unlayered sheets × light and dark × French and Arabic × without and with Tailwind 3's preflight. One
  * browser at a time, closed in finally. `--only=chrome` runs one browser; `--first` one run per browser;
- * `--section=finished` only section 13 (sheet 31–40).
+ * `--section=finished` only section 13 (sheet 31–40);
+ * `--section=text` only section 14 (sheet 41).
  *
  * Run here since 2026-11-16 (the hard cases, section 12, and the finished rows, section 13 — the audit's evidence
  * pages: once per browser, scheme and direction). The Angular fixture's checks (`angularTips`, section 11b) wait for an Angular fixture of this repository.
@@ -1275,6 +1276,74 @@ async function finishedChecks(page, tag, name) {
   await settle();
 }
 
+/**
+ * (14) A grid cell's bubble points at its text (sheet 41; owner 2026-11-17: a right-aligned « 10 » whose bubble sat
+ * 100 px to its left), page tips.html reloaded: hovered with the real pointer, the arrow's tip within the box of what
+ * the cell shows ± 2 px — an end-aligned number, a start-aligned text, a centred one, a text cut by an ellipsis (its
+ * visible part), a component's (the part's button) — and by the keyboard, the focused cell's text. The arrow's tip is
+ * read from the bubble's written place and `--dzt-tip-at` (an opening's transform does not move it).
+ */
+async function textAnchorChecks(page, tag, lang) {
+  await page.goto(site.url(`tips.html?lang=${lang}`));
+  await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 });
+  // The component column (a part's button) given a tooltip of its own here.
+  await page.evaluate(() => window.grid.update({ tooltips: { delayMs: 0 }, columns: window.columns.map((c) => (c.id === 'act' ? { ...c, tooltip: () => 'Détails' } : c)) }));
+  const cellOf = (row, col) => `.dzg-layer .dzg-row[aria-rowindex="${row}"] .dzg-cell[data-col=${col}]`;
+  /** The arrow's tip on the screen and the box it should point into (the text's, cut to the cell's content box). */
+  const read = (sel, inner) => page.evaluate(({ sel, inner }) => {
+    const cell = document.querySelector(sel);
+    const t = document.querySelector('.dzg .dzt-tooltip');
+    if (!t || t.hidden) return { shown: false };
+    const at = parseFloat(t.style.getPropertyValue('--dzt-tip-at'));
+    const inset = parseFloat(t.style.getPropertyValue('inset-inline-start'));
+    const W = document.documentElement.clientWidth;
+    const x = getComputedStyle(t).direction === 'rtl' ? W - inset - at : inset + at;
+    let box;
+    if (inner) box = cell.querySelector(inner).getBoundingClientRect();
+    else {
+      const r = document.createRange();
+      r.selectNodeContents(cell);
+      const b = r.getBoundingClientRect();
+      const c = cell.getBoundingClientRect();
+      const cs = getComputedStyle(cell);
+      const s = c.left + cell.clientLeft + parseFloat(cs.paddingLeft);
+      const e = c.left + cell.clientLeft + cell.clientWidth - parseFloat(cs.paddingRight);
+      box = { left: Math.max(b.left, s), right: Math.min(b.right, e) };
+    }
+    return { shown: true, text: t.textContent, x: Math.round(x * 10) / 10, box: [Math.round(box.left * 10) / 10, Math.round(box.right * 10) / 10] };
+  }, { sel, inner });
+  const away = async () => {
+    await page.mouse.move(2, 2);
+    await page.evaluate(() => window.grid.api.hideTooltip?.());
+    await page.waitForTimeout(150);
+  };
+  const near = (r) => r.shown && r.x >= r.box[0] - 2 && r.x <= r.box[1] + 2;
+  const hover = async (label, sel, inner) => {
+    await away();
+    await page.hover(sel);
+    await page.waitForTimeout(120);
+    const r = await read(sel, inner);
+    check(`${tag}: text anchor, ${label}: the arrow over it`, near(r), r);
+    return r;
+  };
+  await hover('an end-aligned number', cellOf(3, 'grams'));
+  await hover('a start-aligned text', cellOf(3, 'seed'));
+  await page.evaluate((sel) => void (document.querySelector(sel).style.textAlign = 'center'), cellOf(5, 'seed'));
+  await hover('a centred text', cellOf(5, 'seed'));
+  const cut = await hover('a text cut by an ellipsis', cellOf(3, 'note'));
+  check(`${tag}: text anchor, the cut text's box is its visible part`, cut.shown && cut.box[1] - cut.box[0] < 100, cut);
+  await hover('a component (its button)', cellOf(3, 'act'), '.act');
+  // The keyboard: a click on a cell, then a key down: the next cell's tooltip at once, by its text.
+  await away();
+  await page.click(cellOf(3, 'grams'));
+  await page.mouse.move(2, 2);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(120);
+  const k = await read(cellOf(4, 'grams'));
+  check(`${tag}: text anchor, a keyboard focus: the arrow over the focused cell's text`, near(k) && /g$/.test(k.text), k);
+  await away();
+}
+
 async function run(name, cfg) {
   const { css, dark, lang, preflight } = cfg;
   const tag = `${name} ${css}${dark ? ' dark' : ''} ${lang}${preflight ? ' preflight' : ''}`;
@@ -1284,14 +1353,17 @@ async function run(name, cfg) {
     await page.setViewportSize({ width: 900, height: 700 });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    if (section === 'finished') {
+    if (section === 'text') {
+      // Only the text anchor (`--section=text`, sheet 41): once per browser and direction.
+      if (css === 'layered' && !preflight && !dark) await textAnchorChecks(page, tag, lang);
+    } else if (section === 'finished') {
       // Only the last rows (`--section=finished`): the page loaded and axe added, as the first checks do.
       await page.goto(site.url(`tips.html?lang=${lang}&css=${css}${dark ? '&dark=1' : ''}`));
       await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 });
       await page.addScriptTag({ content: AXE });
       if (css === 'layered' && !preflight) await finishedChecks(page, tag, name);
     } else await tipsChecks(page, tag, cfg, name);
-    if (section === 'finished') {
+    if (section === 'finished' || section === 'text') {
       check(`${tag}: no page error`, errors.length === 0, errors);
       await page.close();
       return;
@@ -1300,6 +1372,8 @@ async function run(name, cfg) {
     if (css === 'layered' && !preflight) await robustChecks(page, tag);
     // The last rows of the audit, the same way (sheet 31–40).
     if (css === 'layered' && !preflight) await finishedChecks(page, tag, name);
+    // A cell's bubble by its text (sheet 41), the page reloaded: once per browser and direction.
+    if (css === 'layered' && !preflight && !dark) await textAnchorChecks(page, tag, lang);
     check(`${tag}: no page error`, errors.length === 0, errors);
     await page.close();
   } finally {
