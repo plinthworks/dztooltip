@@ -1,0 +1,142 @@
+# The accepted public type surface — written by scripts/api.mjs, checked by `npm run check:api`.
+# Changed only by an owner decision: `node scripts/api.mjs --accept "<decision>"` (see scripts/api.mjs).
+# history: owner 2026-11-21: baseline of the published 1.0.0
+
+@ @dztooltip/core
+## PopoverCloseReason
+  export type PopoverCloseReason = 'escape' | 'outside' | 'focus' | 'trigger' | 'code' | 'group' | 'gone' | 'leave';
+## PopoverHandle
+  export interface PopoverHandle {
+      open(): void;
+      close(): void;
+      toggle(): void;
+      readonly isOpen: boolean;
+      readonly el: HTMLElement | null;
+      reposition(): void;
+      update(o: Partial<PopoverOptions>): void;
+      destroy(): void;
+  }
+## PopoverOptions
+  export interface PopoverOptions extends TipLook {
+      readonly content: TipContent;
+      readonly label?: string;
+      readonly group?: string;
+      readonly openOn?: 'click' | 'hover' | 'manual';
+      readonly delayMs?: number;
+      readonly hideDelayMs?: number;
+      readonly modal?: boolean;
+      readonly initialFocus?: HTMLElement | ((bubble: HTMLElement) => HTMLElement | null | undefined) | false;
+      readonly returnFocus?: boolean | HTMLElement;
+      readonly nonce?: string;
+      readonly root?: HTMLElement;
+      readonly onOpen?: () => void;
+      readonly onClose?: (reason: PopoverCloseReason) => void;
+  }
+## TipAlign
+  export type TipAlign = -1 | 0 | 1;
+## TipAnimate
+  export type TipAnimate = (el: HTMLElement, phase: 'open' | 'close', info: TipAnimateInfo) => void | PromiseLike<unknown> | TipThenable;
+## TipAnimateInfo
+  export interface TipAnimateInfo {
+      readonly side: TipSide;
+      readonly tone: TipTone;
+      readonly dir: Dir;
+      readonly reduced: boolean;
+      readonly shape: SVGPathElement | null;
+  }
+## TipAnimation
+  export type TipAnimation = 'fade' | 'scale' | 'slide' | 'pop' | 'rise' | 'none' | 'morph';
+## TipContent
+  export type TipContent = string | Node | {
+      readonly html: string;
+  } | (() => string | Node | {
+      readonly node: Node;
+      readonly gone?: () => void;
+  });
+## TipLook
+  export interface TipLook {
+      readonly tone?: TipTone;
+      readonly animation?: TipAnimation;
+      readonly animate?: TipAnimate;
+      readonly reducedMotion?: 'none' | 'fade';
+      readonly placement?: TooltipPlacement;
+      readonly flip?: boolean;
+      readonly shape?: string;
+      readonly style?: Readonly<Record<`--${string}`, string>>;
+      readonly maxWidth?: number | string;
+      readonly offset?: number | TipOffset | ((s: TipOffsetState) => number | TipOffset);
+      readonly shift?: boolean | 'attached';
+      readonly everyFrame?: boolean;
+  }
+## TipOffset
+  export interface TipOffset {
+      readonly mainAxis?: number;
+      readonly crossAxis?: number;
+      readonly alignmentAxis?: number | null;
+  }
+## TipOffsetState
+  export interface TipOffsetState {
+      readonly side: TipSide;
+      readonly align: TipAlign;
+      readonly anchor: {
+          readonly inlineSize: number;
+          readonly blockSize: number;
+      };
+      readonly bubble: {
+          readonly inlineSize: number;
+          readonly blockSize: number;
+      };
+  }
+## TipSide
+  export type TipSide = 'block-end' | 'block-start' | 'inline-end' | 'inline-start';
+## TipThenable
+  export interface TipThenable {
+      then(onDone: (value: unknown) => unknown): unknown;
+  }
+## TipTone
+  export type TipTone = 'info' | 'neutral' | 'success' | 'warning' | 'danger';
+## TooltipHandle
+  export interface TooltipHandle {
+      show(): void;
+      hide(): void;
+      update(o: Partial<TooltipOptions>): void;
+      readonly shown: boolean;
+      destroy(): void;
+  }
+## TooltipOptions
+  export interface TooltipOptions extends TipLook {
+      readonly content: TipContent;
+      readonly delayMs?: number;
+      readonly hideDelayMs?: number;
+      readonly disabled?: boolean;
+      readonly when?: 'always' | 'truncated';
+      readonly nonce?: string;
+      readonly group?: string | false;
+      readonly root?: HTMLElement;
+      readonly followCursor?: boolean | 'inline' | 'block';
+  }
+## TooltipPlacement
+  export type TooltipPlacement = 'auto' | `${'top' | 'bottom' | 'start' | 'end' | 'left' | 'right'}${'' | '-start' | '-end'}`;
+## VirtualAnchor
+  export interface VirtualAnchor {
+      getBoundingClientRect(): VirtualRect;
+      getClientRects?(): ArrayLike<VirtualRect>;
+      readonly contextElement?: Element | null;
+  }
+## VirtualRect
+  export interface VirtualRect {
+      readonly left?: number;
+      readonly top?: number;
+      readonly right?: number;
+      readonly bottom?: number;
+      readonly width?: number;
+      readonly height?: number;
+      readonly x?: number;
+      readonly y?: number;
+  }
+## popover
+  export declare function popover(anchor: HTMLElement | VirtualAnchor, options: PopoverOptions): PopoverHandle;
+## safeHtml
+  export declare function safeHtml(html: string, doc?: Document): DocumentFragment;
+## tooltip
+  export declare function tooltip(anchor: HTMLElement | VirtualAnchor, options: TooltipOptions): TooltipHandle;

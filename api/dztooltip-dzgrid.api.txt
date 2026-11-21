@@ -1,0 +1,55 @@
+# The accepted public type surface — written by scripts/api.mjs, checked by `npm run check:api`.
+# Changed only by an owner decision: `node scripts/api.mjs --accept "<decision>"` (see scripts/api.mjs).
+# history: owner 2026-11-21: baseline of the published 1.0.0
+
+@ @dztooltip/dzgrid
+## DzTooltipsFeature
+  export interface DzTooltipsFeature {
+      readonly id: 'tooltips';
+      setup(g: unknown): {
+          readonly tooltips: GridTooltipSeamLike;
+          destroy(): void;
+      };
+  }
+## DzTooltipsOptions
+  export interface DzTooltipsOptions extends TipLook {
+      readonly header?: boolean;
+      readonly html?: boolean;
+      readonly nonce?: string;
+  }
+## GridTipAnswer
+  export interface GridTipAnswer {
+      readonly text: string;
+      readonly said?: boolean;
+      readonly delayMs?: number;
+  }
+## GridTipLike
+  export interface GridTipLike {
+      readonly text: string;
+      readonly said?: boolean | undefined;
+      readonly tone?: TipTone | undefined;
+      readonly placement?: TooltipPlacement | undefined;
+      readonly animation?: TipAnimation | undefined;
+      readonly shape?: string | undefined;
+      readonly style?: Readonly<Record<`--${string}`, string>> | undefined;
+      readonly maxWidth?: number | string | undefined;
+  }
+## GridTipShowLike
+  export interface GridTipShowLike {
+      readonly el: HTMLElement;
+      readonly anchor: HTMLElement;
+      readonly tip: GridTipLike;
+      readonly dir: 'ltr' | 'rtl';
+      readonly hide: () => void;
+  }
+## GridTooltipSeamLike
+  export interface GridTooltipSeamLike {
+      targets?(): string;
+      tipFor?(target: HTMLElement): GridTipAnswer | null | undefined;
+      ok?(anchor: HTMLElement): boolean;
+      html?(html: string, doc: Document): DocumentFragment;
+      show(s: GridTipShowLike): void;
+      hide(el: HTMLElement, done: () => void): () => void;
+  }
+## dzTooltips
+  export declare function dzTooltips(options?: DzTooltipsOptions): DzTooltipsFeature;

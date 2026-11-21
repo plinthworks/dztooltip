@@ -1,0 +1,11 @@
+# The accepted public type surface — written by scripts/api.mjs, checked by `npm run check:api`.
+# Changed only by an owner decision: `node scripts/api.mjs --accept "<decision>"` (see scripts/api.mjs).
+# history: owner 2026-11-21: baseline of the published 1.0.0
+
+@ @dztooltip/theme
+
+@ @dztooltip/theme/dztooltip.css
+
+@ @dztooltip/theme/dztooltip.unlayered.css
+
+@ @dztooltip/theme/dztooltip.scss

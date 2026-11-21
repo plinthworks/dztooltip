@@ -1,0 +1,11 @@
+{
+  "$comment": "Gzipped (level 9), minified bytes per published entry, measured on the built dist/ by scripts/size.mjs (npm run check:size, after npm run build); `external`: what a consumer already has. Set at owner 2026-11-21 (DzGrid's size guard given to DzTooltip): the published 1.0.0 as measured that day + about 5 %, rounded up to 50 B — core 12 204 → 12 850, core/internal 7 793 → 8 200, angular 3 356 → 3 550, dzgrid 2 115 → 2 250, dztooltip.css 2 994 → 3 150, dztooltip.unlayered.css 2 966 → 3 150. A line moves only by a written owner decision, recorded here and in scripts/test/size-budget.test.ts.",
+  "entries": {
+    "@dztooltip/core": { "file": "packages/core/dist/index.js", "maxGzip": 12850 },
+    "@dztooltip/core/internal": { "file": "packages/core/dist/internal.js", "maxGzip": 8200 },
+    "@dztooltip/angular": { "file": "packages/angular/dist/fesm2022/dztooltip-angular.mjs", "maxGzip": 3550, "external": ["@angular/*", "@dztooltip/*", "tslib"] },
+    "@dztooltip/dzgrid": { "file": "packages/dzgrid/dist/index.js", "maxGzip": 2250, "external": ["@dztooltip/*", "@dzgrid/*"] },
+    "@dztooltip/theme/dztooltip.css": { "file": "packages/theme/dist/dztooltip.css", "maxGzip": 3150 },
+    "@dztooltip/theme/dztooltip.unlayered.css": { "file": "packages/theme/dist/dztooltip.unlayered.css", "maxGzip": 3150 }
+  }
+}

@@ -147,3 +147,10 @@ dark, left to right or right to left. Made-up content.
 
 MIT © Plinthworks. From 1.0.0 the public API follows semver; `@dztooltip/core/internal` is for this repository's own
 packages and has no semver promise.
+
+Two guards hold that promise in a clone, after `npm run build` (both run in `npm run release:check`):
+
+```sh
+npm run check:size   # each published entry, minified and gzipped, against size-budget.json
+npm run check:api    # no public type removed or narrowed against api/*.api.txt (the published 1.0.0)
+```

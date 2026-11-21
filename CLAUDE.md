@@ -33,7 +33,9 @@ npm run typecheck   # core, the bridge, the tests, Angular (ngc, strict template
 npm run build       # packages/*/dist; refuses a manifest pointing at src/ and a runtime dependency in core
 npm run pack:local  # tarballs into packed/
 npm run test:browser  # real browsers (playwright-core, Chrome, Firefox, WebKit), one at a time — wired, see its header
-npm run release:check # pack, the built manifests and typings, every published entry compiled by ngc (Angular 19 and 22)
+npm run check:size  # after build: each published entry minified + gzipped vs size-budget.json (1.0.0 + ~5 %)
+npm run check:api   # after build: no public type removed or narrowed vs api/*.api.txt (the published 1.0.0)
+npm run release:check # pack, check:size, check:api, the built manifests and typings, every entry compiled by ngc (Angular 19 and 22)
 npm run publish:latest -- --otp=CODE  # the owner only: core → theme → angular → dzgrid, then the registry asked
 ```
 
@@ -53,5 +55,7 @@ npm run publish:latest -- --otp=CODE  # the owner only: core → theme → angul
 - HTML only through `safeHtml` (`parseFromString` in `html.ts` only, an inert document, rebuilt from a fixed list).
 - Sizes and timings measured, never asserted: minified and gzipped, on a quiet machine. jsdom checks behaviour, never
   layout: look at it in real browsers.
+- A size budget raised, or a public type removed or narrowed, is an owner decision: the line in `size-budget.json`
+  (and its test), or `node scripts/api.mjs --accept "<decision>" --only "<entry>#<name>"`.
 - Verify before saying done. Spend little: small fixes directly, browsers one at a time, closed in `finally`.
 - Commit or publish only when the owner asks; the owner publishes.

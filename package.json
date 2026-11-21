@@ -11,7 +11,9 @@
     "build": "node scripts/build.mjs",
     "pack:local": "npm run build && rm -rf packed && mkdir packed && for p in core angular theme dzgrid; do (cd packages/$p/dist && npm pack --pack-destination ../../../packed >/dev/null) || exit 1; done && ls packed",
     "test:browser": "node scripts/browser.mjs",
-    "release:check": "npm run pack:local && node scripts/release.mjs check && node scripts/entries.mjs",
+    "check:size": "node scripts/size.mjs",
+    "check:api": "node scripts/api.mjs",
+    "release:check": "npm run pack:local && npm run check:size && npm run check:api && node scripts/release.mjs check && node scripts/entries.mjs",
     "publish:latest": "npm run build && node scripts/release.mjs publish",
     "publish:verify": "node scripts/release.mjs verify",
     "playground": "node scripts/playground.mjs"
